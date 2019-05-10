@@ -1,7 +1,6 @@
 import os
 import ROOT
 import pandas as pd
-from array import array
 import numpy as np
 from glob import glob
 import matplotlib as mpl
@@ -10,181 +9,19 @@ import matplotlib.pyplot as plt
 from argparse import ArgumentParser
 import root_numpy
 from collections import namedtuple
-from scipy.ndimage.filters import median_filter
 
-from scipy import ndimage
-ROOT.gROOT.SetBatch(True)
-Pos = namedtuple("Pos", ["X", "Y", "Z"])
-Inj = namedtuple("Inj", ["Pos", "Tar"])
-
-class Source:
-    BARE = 1
-    COLLIMATOR = 2
-    DIFFUSER = 3
-
-    _names = {BARE:"barefibre",
-              COLLIMATOR:"collimator",
-              DIFFUSER:"diffuser",
-    }
-
-    ALL = [BARE, COLLIMATOR, DIFFUSER]
-
-    @classmethod
-    def tostr(cls, code):
-        return cls._names[code]
-
-class Injector:
-    #OLD_TOP = Pos(-35.3, 777.7, 1802.7) # Location of Jan. SK deployment (AS ON WIKI)
-    OLD_TOP = Inj(Pos(-38., 700., 1610.), Pos(-38., 700., -1810.)) # Location of Jan. SK deployment (AS IN THIS ANALYSIS CODE (?))
-    NEW_TOP = Inj(Pos(-70.7, -777.7, 1802.7), Pos(-25.00, -694.5, -1810.0)) # Default for vertical laser analysis
-    B1 = Inj(Pos(1490.73, 768.14, 1232.25 + 70.7), Pos(-1474.44, -825.362, 1243.0 + 70.7)) # UK injectors, add or subtract one PMT spacing
-    B2 = Inj(Pos(1490.73, 768.14, 595.95 + 70.7), Pos(-1453.88, -860.984, 600.0 + 70.7)) # as we are either below or above the existing Korean
-    B3 = Inj(Pos(1490.73, 768.14, -40.35 - 70.7), Pos(-1494.65, -788.019, -99.00 - 70.7)) # injectors depending on depth.
-    B4 = Inj(Pos(1490.73, 768.14, -605.95 - 70.7), Pos(-1459.59, -851.269, -565.00 - 70.7))
-    B5 = Inj(Pos(1490.73, 768.14, -1242.25 - 70.7), Pos(-1427.93, -903.300, -1232.00 - 70.7))
-    BOTTOM = Inj(Pos(-70.7, 777.7, -1802.7), Pos(-70.7, 777.7, 1802.7)) # For completeness, do not use.
-
-    _names = {OLD_TOP: "oldtop",
-                NEW_TOP: "newtop",
-                B1: "B1",
-                B2: "B2",
-                B3: "B3",
-                B4: "B4",
-                B5: "B5",
-                BOTTOM: "BOTTOM"}
-
-    ALL_BARREL = [B1, B2, B3, B4, B5]
-    ALL = [OLD_TOP, B1, B2, B3, B4, B5]
-
-    @classmethod
-    def tostr(cls, code):
-        return cls._names[code]
-
-class RunInfo:
-    RunInfo = namedtuple("RunInfo", ["runnum", "injector", "source", "intensity", "quality"])
-    RI = RunInfo
-    Runs = {r.runnum:r for r in [
-        # Tuesday 23rd January 2018
-        RI(77480, Injector.OLD_TOP, Source.BARE, 5, False),
-        RI(77481, Injector.OLD_TOP, Source.BARE, 0, False),
-        RI(77483, Injector.OLD_TOP, Source.BARE, 6, True),
-        RI(77484, Injector.OLD_TOP, Source.BARE, 7, True),
-        RI(77485, Injector.OLD_TOP, Source.BARE, 5, True),
-        RI(77486, Injector.OLD_TOP, Source.BARE, 8, True),
-        RI(77488, Injector.OLD_TOP, Source.COLLIMATOR, 5, True),
-        RI(77489, Injector.OLD_TOP, Source.COLLIMATOR, 6, True),
-        RI(77490, Injector.OLD_TOP, Source.COLLIMATOR, 7, True),
-        # Wednesday 24th January 2018
-        RI(77496, Injector.OLD_TOP, Source.COLLIMATOR, 8, True),
-        RI(77497, Injector.OLD_TOP, Source.DIFFUSER, 10, True),
-        RI(77498, Injector.OLD_TOP, Source.DIFFUSER, 15, True),
-        RI(77499, Injector.OLD_TOP, Source.DIFFUSER, 20, True),
-        RI(77500, Injector.OLD_TOP, Source.DIFFUSER, 25, True),
-        # Tuesday 5th February 2019
-        RI(80174, Injector.B1, Source.COLLIMATOR, None, True),
-        RI(80175, Injector.B2, Source.COLLIMATOR, None, True),
-        RI(80176, Injector.B3, Source.COLLIMATOR, None, True),
-        RI(80177, Injector.B4, Source.COLLIMATOR, None, True),
-        RI(80178, Injector.B5, Source.COLLIMATOR, None, True),
-        RI(80180, Injector.B1, Source.DIFFUSER, None, True),
-        RI(80181, Injector.B2, Source.DIFFUSER, None, True),
-        RI(80182, Injector.B3, Source.DIFFUSER, None, True),
-        RI(80183, Injector.B4, Source.DIFFUSER, None, True),
-        RI(80184, Injector.B5, Source.DIFFUSER, None, True),
-        RI(80186, Injector.B1, Source.BARE, None, True),
-        RI(80187, Injector.B2, Source.BARE, None, True),
-        RI(80188, Injector.B3, Source.BARE, None, True),
-        RI(80189, Injector.B4, Source.BARE, None, True),
-        RI(80190, Injector.B5, Source.BARE, None, True),
-    ]}
-
-data_dir = '/Users/billyvinning/Work/hk/skli_analysis/data/korean_laser_feb19'
-
-m = 1.
-cm = 1e-2
-mm = 1e-3
-
-class sk_constants:
-    #-1689.998779296875 1689.998779296875
-    #-1689.6700439453125 1689.62939453125
-    #-1810.0 1810.0
-
-    IDPMTRadius = .254*m
-    WCIDDiameter          = 33.6815*m #16.900*2*cos(2*pi*rad/75)*m; //inner detector diameter
-    WCIDHeight            = 36.200*m #"" "" height
-    WCBarrelPMTOffset     = 0.0715*m #offset from vertical
-    WCBarrelNumPMTHorizontal  = 150 
-    WCBarrelNRings        = 17.
-    WCPMTperCellHorizontal= 4
-    WCPMTperCellVertical  = 3 
-    WCCapPMTSpacing       = 0.707*m # distance between centers of top and bottom pmts
-    WCCapEdgeLimit        = 16.9*m
-    WCBlackSheetThickness = 2.0*cm
-    WCIDCircumference = np.pi*WCIDDiameter
-
-def parseargs():
-
-    parser = ArgumentParser()
-    parser.add_argument('--diffuser', choices=['barefibre', 'collimator', 'diffuser'], default='barefibre')
-    parser.add_argument('--injector', choices=['B1', 'B2', 'B3', 'B4', 'B5'], default='B1')
-    args = parser.parse_args()
-
-    return args
-
-def main():
-
-    args = parseargs()
-    chain, run = load_data(args)
-
-    EventDisplay(chain, run, rot=0.)
-
-    return
-
-def load_data(args):
-
-    flist, sel_run = expand_file_list(args.diffuser, args.injector)
-    chain = load_chain(flist)
-
-    return chain, sel_run
-
-def expand_file_list(diffuser, injector, sel_run=None):
-
-    for run in RunInfo.Runs:
-
-        if injector == Injector.tostr(RunInfo.Runs[run].injector) and diffuser == Source.tostr(RunInfo.Runs[run].source):
-            sel_run = run
-            break
-
-    if sel_run is not None:
-        runs = '*%s.root' % str(sel_run)
-    else:
-        runs = '*.root'
-
-    print os.path.join(data_dir, diffuser, runs)
-    flist = {sel_run: f for f in glob(os.path.join(data_dir, diffuser, runs))}
-
-    print 'Loaded files:'
-
-    for f in flist:
-        print '\t', flist[f]
-
-    return flist, sel_run
-
-def load_chain(flist):
-    
-    chain = ROOT.TChain("tqtree")
-    
-    for run in flist:
-        chain.AddFile(flist[run])
-        
-    return chain
+from constants import *
 
 class EventDisplay():
 
     def __init__(self, tree, run, wvar='', fit=True, norm='area', rot=0.):
+
         self._run = run
         self._diffuser = Source.tostr(RunInfo.Runs[run].source)
         self._injector = RunInfo.Runs[run].injector
+
+        print '\nPreparing run %s (%s %s) event display...' % (self._run, Injector.tostr(self._injector), self._diffuser)
+
         self._pmt_df = self._build_pmt_df(tree, wvar, fit)
 
         if fit and self._diffuser is not 'diffuser':
@@ -193,8 +30,10 @@ class EventDisplay():
         self._plot(fit, rot)
 
     def _build_pmt_df(self, tree, wvar, fit):
+
         print '\tBinning...'
-        map_df = pd.read_csv('pmt_id_pos_map.csv')
+
+        map_df = pd.read_csv('%s/pmt_id_pos_map.csv' % os.path.dirname(__file__))
 
         x_min = 0
         x_max = 11147
@@ -248,8 +87,6 @@ class EventDisplay():
         target_pos = self._injector.Tar
         target_pos_s = np.arctan2(target_pos.X*cm, target_pos.Y*cm)*((target_pos.X*cm)**2 + (target_pos.Y*cm)**2)**0.5
 
-
-
         if source is 'barefibre':
 
             gaus = ROOT.TF2("f2","[0]*TMath::Gaus(x,[1],[2])*TMath::Gaus(y,[3],[4])", target_pos_s - fwhm_r, target_pos_s+fwhm_r, target_pos.Z*cm - fwhm_r, target_pos.Z*cm + fwhm_r)
@@ -270,7 +107,7 @@ class EventDisplay():
             gaus.SetParLimits(3, target_pos.Z*cm - 5.*fwhm_r, target_pos.Z*cm + 5.*fwhm_r)
             gaus.SetParLimits(4, 0.0, 3.0)
 
-        self._barrel_root_hist.Fit(gaus, 'SURF')
+        self._barrel_root_hist.Fit(gaus, 'QRSMN')
         s, z = gaus.GetParameter(1), gaus.GetParameter(3)
         s_err, z_err = gaus.GetParError(1), gaus.GetParError(3)
 
@@ -300,7 +137,7 @@ class EventDisplay():
         ax.plot(injector_pos_s, injector_pos.Z*cm, 'wx', markerfacecolor='blue', alpha=0.35)
 
         if source == 'barefibre' or source == 'collimator':
-            print 'target'
+
             if source is 'barefibre':
 
                 fwhm_theta_air = 22.80075328628417
@@ -328,13 +165,12 @@ class EventDisplay():
 
     def _plot(self, fit=False, rot=0.):
 
-        print 'Plotting...'
+        print '\tPlotting...'
         self._setup_pyplot()
 
         df = self._pmt_df
 
-        if rot is not 0.:
-            print 'rot'
+        if int(rot) is not 0:
             df = self._rotate_detector(df, rot)
         
         df = self._segment_detector(df)
@@ -348,10 +184,12 @@ class EventDisplay():
         self._draw_inj_tar(ax, fit)
         self._add_text(ax)
 
+        print '\tSaving figures...'
         for ext in ['.png', '.pdf']:
+            fname = '%s/%s_%s_occ%s' % (self._diffuser, Injector.tostr(self._injector), self._diffuser, ext)
 
-            plt.savefig('%s/%s_%s_occ%s' % (self._diffuser, Injector.tostr(self._injector), self._diffuser, ext), dpi=800)
-
+            plt.savefig(fname, dpi=800)
+            print '\t\t%s saved!' % fname
         return
 
     def _add_text(self, ax):
@@ -564,6 +402,3 @@ class EventDisplay():
         self._draw_bottom_hits(ax, data, det_geom, cmap)
 
         return
-
-if __name__ == "__main__":
-    main()

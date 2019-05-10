@@ -1,2 +1,4 @@
 barefibre/
 collimator/
+.DS_Store
+*.pyc
