@@ -1,4 +1,4 @@
-#HK-CALIB-SKLI-EVENT-DISPLAY
+# HK-CALIB-SKLI-EVENT-DISPLAY
 
 A pure Python package for generating SK event displays with matplotlib.
 
