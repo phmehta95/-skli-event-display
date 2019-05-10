@@ -14,7 +14,7 @@ from constants import *
 
 class EventDisplay():
     # Recommended cmaps: viridis, inferno, magma, afmhot, kindlmann, kindlmannext
-    def __init__(self, tree, run, wvar='charge', fit=True, norm='area', rot=0., cmap='inferno', invert=False):
+    def __init__(self, tree, run, wvar='occ', fit=True, norm='area', rot=0., cmap='plasma', invert=False):
 
         self._run = run
         self._diffuser = Source.tostr(RunInfo.Runs[run].source)
@@ -42,9 +42,10 @@ class EventDisplay():
 
         if wvar is 'occ':
             wstr = '1/Entries$'
+            self._plot_name = 'OCCUPANCY'
         elif wvar is 'charge':
             wstr = 'charge_vec/Entries$'
-
+            self._plot_name = 'CHARGE DISPLAY'
         tree.Draw('cable_vec>>hist', wstr, 'goff')
 
         if fit:
@@ -168,7 +169,7 @@ class EventDisplay():
 
         return
 
-    def _plot(self, cmap, fit=False, rot=0., invert=False, wvar='occ'):
+    def _plot(self, cmap, fit=False, rot=0., invert=False, wvar='occ', draw_frame=False):
 
         print '\tPlotting...'
         self._setup_pyplot(invert)
@@ -182,7 +183,7 @@ class EventDisplay():
 
         fig, ax = plt.subplots()
 
-        det_frame, det_geom = self._draw_detector_frame(ax)
+        det_frame, det_geom = self._draw_detector_frame(ax, draw_frame)
         self._draw_hits(ax, df, det_geom, cmap, invert)
         self._draw_inj_tar(ax, fit)
         self._add_text(ax)
@@ -197,18 +198,18 @@ class EventDisplay():
 
     def _add_text(self, ax):
 
-        ax.text(0.10, 0.98,
+        ax.text(0.13, 0.98,
         '''
         KOREAN LASER FEB'19
 
-        OCCUPANCIES
+        %s
 
         RUN %s
         %s %s
         
         %s EVENTS SCANNED
 
-            ''' % (self._run, Injector.tostr(self._injector), self._diffuser.upper(), str(self._no_events)),
+            ''' % (self._plot_name, self._run, Injector.tostr(self._injector), self._diffuser.upper(), str(self._no_events)),
             fontsize=4, horizontalalignment='left', verticalalignment='top', transform=ax.transAxes)
 
         tar_r_vec = (self._injector.Tar.X*cm - self._injector.Pos.X*cm, 
@@ -251,7 +252,7 @@ class EventDisplay():
             [%.2f, %.2f, %.2f] m 
 
             SIGNAL OFF-AXIS BY:
-            \u03d1 = %.2f \u00b1 %.2f\u00b0
+            \u03b8 = %.2f \u00b1 %.2f\u00b0
             \u03c6 = %.2f \u00b1 %.2f\u00b0
 
             ''' % (self._injector.Pos.X*cm, self._injector.Pos.Y*cm, self._injector.Pos.Z*cm, 
@@ -264,16 +265,19 @@ class EventDisplay():
 
     def _setup_pyplot(self, invert):
 
-        mpl.rcParams['font.family'] = 'monospace'
+        mpl.rcParams['font.monospace'] = "DIN Alternate"
+        mpl.rcParams['font.family'] = "monospace"
 
         if not invert:
             mpl.rcParams['savefig.facecolor'] = 'black'
             mpl.rcParams['savefig.edgecolor'] = 'black'
             mpl.rcParams['text.color'] = 'w'
+            mpl.rcParams['patch.edgecolor'] = 'w'
         else:
             mpl.rcParams['savefig.facecolor'] = 'white'
             mpl.rcParams['savefig.edgecolor'] = 'white'
             mpl.rcParams['text.color'] = 'k'
+            mpl.rcParams['patch.edgecolor'] = 'k'
         
         return
 
@@ -302,7 +306,7 @@ class EventDisplay():
 
         return data
 
-    def _draw_detector_frame(self, ax):
+    def _draw_detector_frame(self, ax, draw_frame):
 
         plt_barrel_width = sk_constants.WCIDCircumference
         plt_barrel_height = sk_constants.WCIDHeight
@@ -310,17 +314,17 @@ class EventDisplay():
 
         top_c = (0.0, 0.0 + plt_barrel_height)
         bottom_c = (0.0, 0.0 - plt_barrel_height)
-        barrel_c = (0.0 - plt_barrel_width/2.0, 0.0 - plt_barrel_height/2.0)
+        barrel_c = (0.0 - plt_barrel_width/2.0 - 0.5*sk_constants.WCCapPMTSpacing, 0.0 - plt_barrel_height/2.0)
 
-        barrel = mpl.patches.Rectangle(barrel_c, width=plt_barrel_width, height=plt_barrel_height, fill=False, edgecolor='black')
-        top_cap = mpl.patches.Circle(top_c, radius=plt_id_radius, fill=False, edgecolor='black')
-        bottom_cap = mpl.patches.Circle(bottom_c, radius=plt_id_radius, fill=False, edgecolor='black')
+        barrel = mpl.patches.Rectangle(barrel_c, width=plt_barrel_width+sk_constants.WCCapPMTSpacing, height=plt_barrel_height, fill=False, linewidth=0.1, alpha=0.5)
+        top_cap = mpl.patches.Circle(top_c, radius=plt_id_radius+0.5*sk_constants.WCCapPMTSpacing, fill=False, linewidth=0.1, alpha=0.5)
+        bottom_cap = mpl.patches.Circle(bottom_c, radius=plt_id_radius+0.5*sk_constants.WCCapPMTSpacing, fill=False, linewidth=0.1, alpha=0.5)
 
         patches = [barrel, top_cap, bottom_cap]
 
         collection = mpl.collections.PatchCollection(patches, match_original=True)
-
-        #ax.add_collection(collection)
+        if draw_frame:
+            ax.add_collection(collection)
         plt.axis('equal')
         plt.xlim(-plt_barrel_width/1.8, plt_barrel_width/1.8)
         plt.ylim(-1.1*(2.*plt_id_radius+(plt_barrel_height/2.0)), 1.1*(2.*plt_id_radius+(plt_barrel_height/2.0)))
