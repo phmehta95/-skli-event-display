@@ -13,8 +13,8 @@ from argparse import ArgumentParser
 from constants import *
 
 class EventDisplay():
-
-    def __init__(self, tree, run, wvar='occ', fit=True, norm='area', rot=0.):
+    # Recommended cmaps: viridis, inferno, magma, afmhot, kindlmann, kindlmannext
+    def __init__(self, tree, run, wvar='charge', fit=True, norm='area', rot=0., cmap='inferno', invert=False):
 
         self._run = run
         self._diffuser = Source.tostr(RunInfo.Runs[run].source)
@@ -27,7 +27,7 @@ class EventDisplay():
         if fit and self._diffuser is not 'diffuser':
             self._loc_signal()
 
-        self._plot(fit, rot)
+        self._plot(cmap, fit, rot, invert, wvar)
 
     def _build_pmt_df(self, tree, wvar, fit):
 
@@ -41,7 +41,7 @@ class EventDisplay():
         hist = ROOT.TH1F('hist', 'hist', x_max, x_min-0.5, x_max-0.5)
 
         if wvar is 'occ':
-            wstr = ''
+            wstr = '1/Entries$'
         elif wvar is 'charge':
             wstr = 'charge_vec/Entries$'
 
@@ -50,7 +50,7 @@ class EventDisplay():
         if fit:
             hist_barrel = ROOT.TH2F('barrel', 'barrel', sk_constants.WCBarrelNumPMTHorizontal, -sk_constants.WCIDCircumference/2.0, sk_constants.WCIDCircumference/2.0, int(sk_constants.WCBarrelNRings*sk_constants.WCPMTperCellVertical), -sk_constants.WCIDHeight/2.0, sk_constants.WCIDHeight/2.0)
 
-            tree.Draw('(pmtz_vec/100.):((((pmtx_vec/100.)^2 + (pmty_vec/100.)^2  )^0.5)*TMath::ATan2(pmtx_vec/100.,pmty_vec/100.))>>barrel', 'pmtz_vec<1809 && pmtz_vec>-1809'+wvar, 'goff')
+            tree.Draw('(pmtz_vec/100.):((((pmtx_vec/100.)^2 + (pmty_vec/100.)^2 )^0.5)*TMath::ATan2(pmtx_vec/100.,pmty_vec/100.))>>barrel', '(pmtz_vec<1809 && pmtz_vec>-1809)*(%s)' % wstr, 'goff')
 
             self._barrel_root_hist = hist_barrel
 
@@ -168,10 +168,10 @@ class EventDisplay():
 
         return
 
-    def _plot(self, fit=False, rot=0.):
+    def _plot(self, cmap, fit=False, rot=0., invert=False, wvar='occ'):
 
         print '\tPlotting...'
-        self._setup_pyplot()
+        self._setup_pyplot(invert)
 
         df = self._pmt_df
 
@@ -182,16 +182,14 @@ class EventDisplay():
 
         fig, ax = plt.subplots()
 
-        fig.patch.set_facecolor('xkcd:black')
-
         det_frame, det_geom = self._draw_detector_frame(ax)
-        self._draw_hits(ax, df, det_geom, cmap_name='inferno')
+        self._draw_hits(ax, df, det_geom, cmap, invert)
         self._draw_inj_tar(ax, fit)
         self._add_text(ax)
 
         print '\tSaving figures...'
         for ext in ['.png', '.pdf']:
-            fname = '%s/%s_%s_occ%s' % (self._diffuser, Injector.tostr(self._injector), self._diffuser, ext)
+            fname = '%s/%s_%s_%s%s' % (self._diffuser, Injector.tostr(self._injector), self._diffuser, wvar, ext)
 
             plt.savefig(fname, dpi=800)
             print '\t\t%s saved!' % fname
@@ -211,7 +209,7 @@ class EventDisplay():
         %s EVENTS SCANNED
 
             ''' % (self._run, Injector.tostr(self._injector), self._diffuser.upper(), str(self._no_events)),
-            color='w', fontsize=4, horizontalalignment='left', verticalalignment='top', transform=ax.transAxes)
+            fontsize=4, horizontalalignment='left', verticalalignment='top', transform=ax.transAxes)
 
         tar_r_vec = (self._injector.Tar.X*cm - self._injector.Pos.X*cm, 
                     self._injector.Tar.Y*cm - self._injector.Pos.Y*cm,
@@ -260,15 +258,22 @@ class EventDisplay():
                     self._injector.Tar.X*cm, self._injector.Tar.Y*cm, self._injector.Tar.Z*cm,
                     self._signal_cart[0], self._signal_cart[1], self._signal_cart[2],
                     off_axis_theta, abs(np.degrees(sig_theta_err)), off_axis_phi, abs(np.degrees(sig_phi_err)) ),
-            color='w', fontsize=4, horizontalalignment='right', verticalalignment='top', transform=ax.transAxes)
+            fontsize=4, horizontalalignment='right', verticalalignment='top', transform=ax.transAxes)
 
         return
 
-    def _setup_pyplot(self):
+    def _setup_pyplot(self, invert):
 
-        mpl.rcParams['savefig.facecolor'] = 'black'
-        mpl.rcParams['savefig.edgecolor'] = 'black'
         mpl.rcParams['font.family'] = 'monospace'
+
+        if not invert:
+            mpl.rcParams['savefig.facecolor'] = 'black'
+            mpl.rcParams['savefig.edgecolor'] = 'black'
+            mpl.rcParams['text.color'] = 'w'
+        else:
+            mpl.rcParams['savefig.facecolor'] = 'white'
+            mpl.rcParams['savefig.edgecolor'] = 'white'
+            mpl.rcParams['text.color'] = 'k'
         
         return
 
@@ -393,12 +398,27 @@ class EventDisplay():
 
         return 
 
-    def _draw_hits(self, ax, data, det_geom, cmap_name='viridis'):
+    def _draw_hits(self, ax, data, det_geom, cmap_name, invert):
 
         zmin = data['val'].values.min()
         zmax = data['val'].values.max()
 
-        cmap = mpl.cm.get_cmap(cmap_name) 
+        if cmap_name is not 'kindlmann' and cmap_name is not 'kindlmannext':
+
+            cmap = mpl.cm.get_cmap(cmap_name)
+
+        elif cmap_name is 'kindlmann':
+
+            cmap_csv = pd.read_csv('%s/kindlmann-table-float-1024.csv' % os.path.dirname(__file__))
+            cmap = mpl.colors.ListedColormap(cmap_csv[['RGB_r', 'RGB_g', 'RGB_b']].values)
+
+        elif cmap_name is 'kindlmannext':
+
+            cmap_csv = pd.read_csv('%s/extended-kindlmann-table-float-1024.csv' % os.path.dirname(__file__))
+            cmap = mpl.colors.ListedColormap(cmap_csv[['RGB_r', 'RGB_g', 'RGB_b']].values)
+
+        if invert:
+            cmap = cmap.reversed()
 
         data['val'] = data['val']/zmax
 
