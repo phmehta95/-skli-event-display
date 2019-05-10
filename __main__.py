@@ -2,25 +2,25 @@ import os
 import ROOT
 from glob import glob
 from argparse import ArgumentParser
+import cProfile
+import pstats
 
 from eventdisplay import EventDisplay
 from constants import *
 
-data_dir = '/Users/billyvinning/Work/hk/skli_analysis/data/korean_laser_feb19'
-
 def parseargs():
 
     parser = ArgumentParser()
+    parser.add_argument('-input-dir', '-i')
     parser.add_argument('--diffuser', choices=['barefibre', 'collimator', 'diffuser'], default='barefibre')
     parser.add_argument('--injector', choices=['B1', 'B2', 'B3', 'B4', 'B5'], default='B1')
     parser.add_argument('-b', '--batch', action='store_true', default=False)
+    parser.add_argument('-p', '--profile', action='store_true', default=False)
     args = parser.parse_args()
 
     return args
 
-def main():
-
-    args = parseargs()
+def run(args):
 
     if args.batch:
         ROOT.gROOT.SetBatch(True)
@@ -31,14 +31,27 @@ def main():
 
     return
 
+def main():
+
+    args = parseargs()
+
+    if args.profile:
+        profile_func(run, args=[args])
+    else:
+        run(args)
+
+    return
+
 def load_data(args):
+
     print '\nLoading data...'
-    flist, sel_run = expand_file_list(args.diffuser, args.injector)
+
+    flist, sel_run = expand_file_list(args.input_dir, args.diffuser, args.injector)
     chain = load_chain(flist)
 
     return chain, sel_run
 
-def expand_file_list(diffuser, injector, sel_run=None):
+def expand_file_list(input_dir, diffuser, injector, sel_run=None):
 
     for run in RunInfo.Runs:
 
@@ -51,7 +64,7 @@ def expand_file_list(diffuser, injector, sel_run=None):
     else:
         runs = '*.root'
 
-    flist = {sel_run: f for f in glob(os.path.join(data_dir, diffuser, runs))}
+    flist = {sel_run: f for f in glob(os.path.join(input_dir, diffuser, runs))}
 
     print '\tLoaded files:'
 
@@ -69,6 +82,20 @@ def load_chain(flist):
         
     return chain
 
+def run_profiler(func, *args, **kwargs):
+    profile = cProfile.Profile()
+    profile.enable()
+    func(*args, **kwargs)
+    profile.disable()
+    return profile
+
+def profile_func(func, args=[], kwargs={}, num=20):
+    prof = run_profiler(func, *args, **kwargs)
+    ps = pstats.Stats(prof)
+    for key in ["time", "cumulative"]:
+        print "--- top {} sorted by {}".format(num, key)
+        ps.sort_stats(key).print_stats(num)
+    return
 
 if __name__ == "__main__":
     main()
