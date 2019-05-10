@@ -1,9 +1,9 @@
 import os
 import ROOT
+import pstats
+import cProfile
 from glob import glob
 from argparse import ArgumentParser
-import cProfile
-import pstats
 
 from eventdisplay import EventDisplay
 from constants import *
@@ -27,7 +27,7 @@ def run(args):
 
     chain, run = load_data(args)
 
-    EventDisplay(chain, run, rot=0.)
+    EventDisplay(chain, run)
 
     return
 

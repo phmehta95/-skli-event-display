@@ -1,7 +1,7 @@
 import os
 import numpy as np
-from argparse import ArgumentParser
 from collections import namedtuple
+from argparse import ArgumentParser
 
 m = 1.
 cm = 1e-2

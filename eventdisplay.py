@@ -1,20 +1,20 @@
 import os
 import ROOT
-import pandas as pd
+import root_numpy
 import numpy as np
+import pandas as pd
 from glob import glob
 import matplotlib as mpl
 mpl.use("TkAgg")
 import matplotlib.pyplot as plt
-from argparse import ArgumentParser
-import root_numpy
 from collections import namedtuple
+from argparse import ArgumentParser
 
 from constants import *
 
 class EventDisplay():
 
-    def __init__(self, tree, run, wvar='', fit=True, norm='area', rot=0.):
+    def __init__(self, tree, run, wvar='occ', fit=True, norm='area', rot=0.):
 
         self._run = run
         self._diffuser = Source.tostr(RunInfo.Runs[run].source)
@@ -40,7 +40,12 @@ class EventDisplay():
 
         hist = ROOT.TH1F('hist', 'hist', x_max, x_min-0.5, x_max-0.5)
 
-        tree.Draw('cable_vec>>hist', wvar, 'goff')
+        if wvar is 'occ':
+            wstr = ''
+        elif wvar is 'charge':
+            wstr = 'charge_vec/Entries$'
+
+        tree.Draw('cable_vec>>hist', wstr, 'goff')
 
         if fit:
             hist_barrel = ROOT.TH2F('barrel', 'barrel', sk_constants.WCBarrelNumPMTHorizontal, -sk_constants.WCIDCircumference/2.0, sk_constants.WCIDCircumference/2.0, int(sk_constants.WCBarrelNRings*sk_constants.WCPMTperCellVertical), -sk_constants.WCIDHeight/2.0, sk_constants.WCIDHeight/2.0)
@@ -180,7 +185,7 @@ class EventDisplay():
         fig.patch.set_facecolor('xkcd:black')
 
         det_frame, det_geom = self._draw_detector_frame(ax)
-        self._draw_hits(ax, df, det_geom)
+        self._draw_hits(ax, df, det_geom, cmap_name='inferno')
         self._draw_inj_tar(ax, fit)
         self._add_text(ax)
 
@@ -388,12 +393,12 @@ class EventDisplay():
 
         return 
 
-    def _draw_hits(self, ax, data, det_geom):
+    def _draw_hits(self, ax, data, det_geom, cmap_name='viridis'):
 
         zmin = data['val'].values.min()
         zmax = data['val'].values.max()
 
-        cmap = mpl.cm.get_cmap('viridis') 
+        cmap = mpl.cm.get_cmap(cmap_name) 
 
         data['val'] = data['val']/zmax
 
