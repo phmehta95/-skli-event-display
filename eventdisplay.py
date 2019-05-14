@@ -1,5 +1,6 @@
 import os
 import ROOT
+import time
 import root_numpy
 import numpy as np
 import pandas as pd
@@ -9,7 +10,7 @@ mpl.use("TkAgg")
 import matplotlib.pyplot as plt
 from collections import namedtuple
 from argparse import ArgumentParser
-
+import datetime
 from hepunits.constants import c_light
 from constants import *
 
@@ -37,7 +38,7 @@ class EventDisplay():
 
         CORRECTED_TIME = "(time_vec - 1.0e9*sqrt(pow(pmtx_vec/100. - %s/100., 2)+pow(pmty_vec/100. - %s/100., 2)+pow(pmtz_vec/100. - %s/100., 2))/%s)" % (injector.Pos.X, injector.Pos.Y, injector.Pos.Z, c_light*1e6/1.333)
 
-        diffuser_t = (1040, 1110)
+        diffuser_t = (1060, 1095)
         collimator_t = (1065, 1090)
         bare_t = (1060, 1090)
 
@@ -54,7 +55,7 @@ class EventDisplay():
           elif source == 'collimator':
             hit_in_time = "(%s > 1065.) && (%s < 1090.)" % (CORRECTED_TIME, CORRECTED_TIME)
           elif source == 'diffuser':
-            hit_in_time = "(%s > 1040.) && (%s < 1110.)" % (CORRECTED_TIME, CORRECTED_TIME)
+            hit_in_time = "(%s > 1060.) && (%s < 1095.)" % (CORRECTED_TIME, CORRECTED_TIME)
 
         if source == 'barefibre':
             return (hit_in_time, bare_t)
@@ -86,10 +87,13 @@ class EventDisplay():
         else:
             time_str, self._time_markers = self._calc_hit_in_time()
             tree.Draw('cable_vec>>hist', '(%s)*(%s)' % (wstr, time_str), 'goff')
+
         if draw_timing:
+
             self._timing_data = root_numpy.tree2array(tree, "(time_vec - 1.0e9*sqrt(pow(pmtx_vec/100. - %s/100., 2)+pow(pmty_vec/100. - %s/100., 2)+pow(pmtz_vec/100. - %s/100., 2))/%s)" % (self._injector.Pos.X, self._injector.Pos.Y, self._injector.Pos.Z, c_light*1e6/1.333))
 
         if fit:
+
             hist_barrel = ROOT.TH2F('barrel', 'barrel', sk_constants.WCBarrelNumPMTHorizontal, -sk_constants.WCIDCircumference/2.0, sk_constants.WCIDCircumference/2.0, int(sk_constants.WCBarrelNRings*sk_constants.WCPMTperCellVertical), -sk_constants.WCIDHeight/2.0, sk_constants.WCIDHeight/2.0)
 
             tree.Draw('(pmtz_vec/100.):((((pmtx_vec/100.)^2 + (pmty_vec/100.)^2 )^0.5)*TMath::ATan2(pmtx_vec/100.,pmty_vec/100.))>>barrel', '(pmtz_vec<1809 && pmtz_vec>-1809)*(%s)' % wstr, 'goff')
@@ -97,6 +101,30 @@ class EventDisplay():
             self._barrel_root_hist = hist_barrel
 
         self._no_events = tree.GetEntries()
+
+        for i, event in enumerate(tree):
+
+            if i == 0: # Gets first event
+                year_start = event.year
+                month_start = event.month
+                day_start = event.day
+                hour_start = event.hour
+                minute_start = event.minute
+                second_start = event.second
+                millisecond_start = event.millisecond
+
+            if i == tree.GetEntries()-1: # Gets last event
+                year_end = event.year
+                month_end = event.month
+                day_end = event.day
+                hour_end = event.hour
+                minute_end = event.minute
+                second_end = event.second
+                millisecond_end = event.millisecond
+        
+        self._run_start_tree = datetime.datetime(year_start, month_start, day_start, hour_start, minute_start, second_start, millisecond_start)
+        self._run_end_tree = datetime.datetime(year_end, month_end, day_end, hour_end, minute_end, second_end, millisecond_end)
+
         array, edges = root_numpy.hist2array(hist, return_edges=True)
 
         data = pd.DataFrame({'val': array, 'pmtid': (np.array(edges[0][0:-1])+0.5).astype(int)})
@@ -137,21 +165,21 @@ class EventDisplay():
         if source is 'barefibre':
 
             gaus = ROOT.TF2("f2","[0]*TMath::Gaus(x,[1],[2])*TMath::Gaus(y,[3],[4])", target_pos_s - fwhm_r, target_pos_s+fwhm_r, target_pos.Z*cm - fwhm_r, target_pos.Z*cm + fwhm_r)
-            sigma = 20.0
+            sigma = 10.0
             gaus.SetParameters(1.0,target_pos_s,sigma,target_pos.Z*cm,sigma)
-            gaus.SetParLimits(1, target_pos_s - fwhm_r, target_pos_s+fwhm_r)
+            gaus.SetParLimits(1, target_pos_s - 5.0*fwhm_r, target_pos_s+5.0*fwhm_r)
             gaus.SetParLimits(2, 0.0, 50.0)
-            gaus.SetParLimits(3, target_pos.Z*cm - fwhm_r, target_pos.Z*cm + fwhm_r)
+            gaus.SetParLimits(3, target_pos.Z*cm - 5.*fwhm_r, target_pos.Z*cm + 5.*fwhm_r)
             gaus.SetParLimits(4, 0.0, 50.0)
 
         elif source is 'collimator':
 
             gaus = ROOT.TF2("f2","[0]*TMath::Gaus(x,[1],[2])*TMath::Gaus(y,[3],[4])", target_pos_s - fwhm_r*5.0, target_pos_s+5.0*fwhm_r, target_pos.Z*cm - 5.0*fwhm_r, target_pos.Z*cm + 5.*fwhm_r)
-            sigma = 1.25
-            gaus.SetParameters(1e4,target_pos_s+2.5,sigma,target_pos.Z*cm -2.0,sigma)
-            gaus.SetParLimits(1, target_pos_s - 5.*fwhm_r, target_pos_s+5.*fwhm_r)
+            sigma = 1.
+            gaus.SetParameters(1e4,target_pos_s,sigma,target_pos.Z*cm,sigma)
+            gaus.SetParLimits(1, target_pos_s - 3.*fwhm_r, target_pos_s+3.*fwhm_r)
             gaus.SetParLimits(2, 0.0, 3.0)
-            gaus.SetParLimits(3, target_pos.Z*cm - 5.*fwhm_r, target_pos.Z*cm + 5.*fwhm_r)
+            gaus.SetParLimits(3, target_pos.Z*cm - 3.*fwhm_r, target_pos.Z*cm + 3.*fwhm_r)
             gaus.SetParLimits(4, 0.0, 3.0)
 
         self._barrel_root_hist.Fit(gaus, 'QRSMN')
@@ -204,7 +232,7 @@ class EventDisplay():
             fwhm_circle = mpl.patches.Circle((target_pos_s, target_pos.Z*cm), radius=fwhm_r, fill=False, edgecolor='blue', linewidth=0.5, alpha=0.3)
             ax.add_artist(fwhm_circle)
 
-        if fit:
+        if fit and source != 'diffuser':
 
             s_sig, z_sig = self._signal
             x_sig, y_sig, z_sig = self._signal_cart
@@ -216,7 +244,7 @@ class EventDisplay():
         ax.plot(target_pos_s, target_pos.Z*cm, 'bx', alpha=0.5, label='TARGET')
         ax.plot(target_pos.X*cm+top_c[0], target_pos.Y*cm+top_c[1], 'bx', markersize=3, alpha=0.5)
         ax.plot(target_pos.X*cm+bottom_c[0], target_pos.Y*cm+bottom_c[1], 'bx', markersize=3, alpha=0.5)
-        ax.legend(loc=(0.785, 0.670), markerscale=0.7)._legend_box.align='right'
+        ax.legend(loc=(0.795, 0.670), markerscale=0.7)._legend_box.align='right'
 
         return
 
@@ -237,7 +265,7 @@ class EventDisplay():
         det_frame, det_geom = self._draw_detector_frame(ax, draw_frame)
         self._draw_hits(ax, df, det_geom, cmap, invert)
         self._draw_inj_tar(ax, fit, det_geom)
-        self._add_text(ax)
+        self._add_text(ax, fit)
         if draw_timing:
             self._add_timing_plot(fig)
         self._add_colourbar(fig, cmap, invert)
@@ -272,7 +300,7 @@ class EventDisplay():
 
         timing_data = np.concatenate(self._timing_data).ravel()
 
-        ax = fig.add_axes([0.635, 0.17, 0.18, 0.18], facecolor='k')
+        ax = fig.add_axes([0.635, 0.17, 0.195, 0.18], facecolor='k')
 
         n, bins, patches = ax.hist(timing_data, 5000, edgecolor='w', facecolor='k', linewidth=0.05, histtype='step')
         ax.set_xlabel('TOF CORRECTED TIME (ns)', fontsize=3)
@@ -286,7 +314,7 @@ class EventDisplay():
 
         return
 
-    def _add_text(self, ax):
+    def _add_text(self, ax, fit):
 
         ax.text(0.077, 0.97,
         '''
@@ -296,62 +324,80 @@ class EventDisplay():
         %s %s
         %s
         
+        RUN START %s 
+        RUN END %s
         %s EVENTS IN RUN
 
-        CUT APPLIED TO TOF CORRECTED TIME:
-        (%d ns < TOF_T < %d ns)
+        TOF CORRECTED TIME CUT:
+        %d - %d ns
 
-            ''' % (self._run, Injector.tostr(self._injector), self._diffuser.upper(), self._plot_name, str(self._no_events), self._time_markers[0], self._time_markers[1]),
+            ''' % (self._run, Injector.tostr(self._injector), self._diffuser.upper(), self._plot_name, str(self._run_start_tree), str(self._run_end_tree), str(self._no_events), self._time_markers[0], self._time_markers[1]),
             fontsize=4, horizontalalignment='left', verticalalignment='top', transform=ax.transAxes)
 
-        tar_r_vec = (self._injector.Tar.X*cm - self._injector.Pos.X*cm, 
-                    self._injector.Tar.Y*cm - self._injector.Pos.Y*cm,
-                    self._injector.Tar.Z*cm - self._injector.Pos.Z*cm)
+        if fit and self._diffuser is not 'diffuser':
 
-        sig_r_vec = (self._signal_cart[0] - self._injector.Pos.X*cm, 
-                    self._signal_cart[1] - self._injector.Pos.Y*cm,
-                    self._signal_cart[2] - self._injector.Pos.Z*cm)
+            tar_r_vec = (self._injector.Tar.X*cm - self._injector.Pos.X*cm, 
+                        self._injector.Tar.Y*cm - self._injector.Pos.Y*cm,
+                        self._injector.Tar.Z*cm - self._injector.Pos.Z*cm)
 
-        sig_err = self._signal_err_cart
+            sig_r_vec = (self._signal_cart[0] - self._injector.Pos.X*cm, 
+                        self._signal_cart[1] - self._injector.Pos.Y*cm,
+                        self._signal_cart[2] - self._injector.Pos.Z*cm)
 
-        sig_r = (sig_r_vec[0]**2 + sig_r_vec[1]**2 + sig_r_vec[2]**2)**0.5
-        tar_r = (tar_r_vec[0]**2 + tar_r_vec[1]**2 + tar_r_vec[2]**2)**0.5
+            sig_err = self._signal_err_cart
 
-        sig_r_err = (((sig_r_vec[0]*sig_err[0])**2 + (sig_r_vec[1]*sig_err[1])**2 + (sig_r_vec[2]*sig_err[2])**2)**0.5)/sig_r
+            sig_r = (sig_r_vec[0]**2 + sig_r_vec[1]**2 + sig_r_vec[2]**2)**0.5
+            tar_r = (tar_r_vec[0]**2 + tar_r_vec[1]**2 + tar_r_vec[2]**2)**0.5
 
-        tar_theta = np.arccos(tar_r_vec[2]/tar_r)
-        tar_phi = np.arctan(tar_r_vec[1]/tar_r_vec[0])
+            sig_r_err = (((sig_r_vec[0]*sig_err[0])**2 + (sig_r_vec[1]*sig_err[1])**2 + (sig_r_vec[2]*sig_err[2])**2)**0.5)/sig_r
 
-        sig_theta = np.arccos(sig_r_vec[2]/sig_r)
-        sig_phi = np.arctan(sig_r_vec[1]/sig_r_vec[0])
+            tar_theta = np.arccos(tar_r_vec[2]/tar_r)
+            tar_phi = np.arctan(tar_r_vec[1]/tar_r_vec[0])
 
-        sig_phi_err = (abs(sig_r_vec[1]/sig_r_vec[0])*((sig_err[1]/sig_r_vec[1])**2 + (sig_err[0]/sig_r_vec[0])**2 )**0.5)/(1. + (sig_r_vec[1]/sig_r_vec[0])**2)
+            sig_theta = np.arccos(sig_r_vec[2]/sig_r)
+            sig_phi = np.arctan(sig_r_vec[1]/sig_r_vec[0])
 
-        sig_theta_err = ( abs(sig_r_vec[2]/sig_r)*( (sig_err[2]/sig_r_vec[2])**2 + (sig_r_err/sig_r)**2 )**0.5 )/(  (1. - (sig_r_vec[2]/sig_r)**2)**0.5 )
+            sig_phi_err = (abs(sig_r_vec[1]/sig_r_vec[0])*((sig_err[1]/sig_r_vec[1])**2 + (sig_err[0]/sig_r_vec[0])**2 )**0.5)/(1. + (sig_r_vec[1]/sig_r_vec[0])**2)
 
-        off_axis_theta = abs(np.degrees(sig_theta - tar_theta))
-        off_axis_phi = abs(np.degrees(sig_phi - tar_phi))
+            sig_theta_err = ( abs(sig_r_vec[2]/sig_r)*( (sig_err[2]/sig_r_vec[2])**2 + (sig_r_err/sig_r)**2 )**0.5 )/(  (1. - (sig_r_vec[2]/sig_r)**2)**0.5 )
 
-        ax.text(0.90, 0.97, 
-            u'''
-            INJECTOR COORDS
-            [%.2f, %.2f, %.2f] m
+            off_axis_theta = abs(np.degrees(sig_theta - tar_theta))
+            off_axis_phi = abs(np.degrees(sig_phi - tar_phi))
 
-            TARGET CENTROID COORDS
-            [%.2f, %.2f, %.2f] m
+            ax.text(0.90, 0.97, 
+                u'''
+                INJECTOR COORDS
+                [%.2f, %.2f, %.2f] m
 
-            SIGNAL CENTROID COORDS
-            [%.2f, %.2f, %.2f] m 
+                TARGET CENTROID COORDS
+                [%.2f, %.2f, %.2f] m
 
-            SIGNAL OFF-AXIS BY:
-            \u03b8 = %.2f \u00b1 %.2f\u00b0
-            \u03c6 = %.2f \u00b1 %.2f\u00b0
+                SIGNAL CENTROID COORDS
+                [%.2f, %.2f, %.2f] m 
 
-            ''' % (self._injector.Pos.X*cm, self._injector.Pos.Y*cm, self._injector.Pos.Z*cm, 
-                    self._injector.Tar.X*cm, self._injector.Tar.Y*cm, self._injector.Tar.Z*cm,
-                    self._signal_cart[0], self._signal_cart[1], self._signal_cart[2],
-                    off_axis_theta, abs(np.degrees(sig_theta_err)), off_axis_phi, abs(np.degrees(sig_phi_err)) ),
-            fontsize=4, horizontalalignment='right', verticalalignment='top', transform=ax.transAxes)
+                SIGNAL OFF-AXIS BY:
+                \u03b8 = %.2f \u00b1 %.2f\u00b0
+                \u03c6 = %.2f \u00b1 %.2f\u00b0
+
+                ''' % (self._injector.Pos.X*cm, self._injector.Pos.Y*cm, self._injector.Pos.Z*cm, 
+                        self._injector.Tar.X*cm, self._injector.Tar.Y*cm, self._injector.Tar.Z*cm,
+                        self._signal_cart[0], self._signal_cart[1], self._signal_cart[2],
+                        off_axis_theta, abs(np.degrees(sig_theta_err)), off_axis_phi, abs(np.degrees(sig_phi_err)) ),
+                fontsize=4, horizontalalignment='right', verticalalignment='top', transform=ax.transAxes)
+
+        else:
+
+            ax.text(0.90, 0.97, 
+                u'''
+                INJECTOR COORDS
+                [%.2f, %.2f, %.2f] m
+
+                TARGET CENTROID COORDS
+                [%.2f, %.2f, %.2f] m
+
+                ''' % (self._injector.Pos.X*cm, self._injector.Pos.Y*cm, self._injector.Pos.Z*cm, 
+                        self._injector.Tar.X*cm, self._injector.Tar.Y*cm, self._injector.Tar.Z*cm),
+                fontsize=4, horizontalalignment='right', verticalalignment='top', transform=ax.transAxes)
 
         return
 
