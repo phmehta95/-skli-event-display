@@ -15,7 +15,7 @@ from constants import *
 
 class EventDisplay():
     # Recommended cmaps: viridis, inferno, magma, afmhot, kindlmann, kindlmannext
-    def __init__(self, tree, run, wvar='occ', fit=True, norm='area', rot=0., cmap='plasma', invert=False, draw_frame=False, cut=True):
+    def __init__(self, tree, run, wvar='occ', fit=True, norm='area', rot=0., cmap='plasma', invert=False, draw_frame=False, cut=True, draw_timing=True):
 
         self._run = run
         self._diffuser = Source.tostr(RunInfo.Runs[run].source)
@@ -23,12 +23,12 @@ class EventDisplay():
 
         print '\nPreparing run %s (%s %s) event display...' % (self._run, Injector.tostr(self._injector), self._diffuser)
 
-        self._pmt_df = self._build_pmt_df(tree, wvar, fit, cut)
+        self._pmt_df = self._build_pmt_df(tree, wvar, fit, cut, draw_timing)
 
         if fit and self._diffuser is not 'diffuser':
             self._loc_signal()
 
-        self._plot(cmap, fit, rot, invert, wvar, draw_frame)
+        self._plot(cmap, fit, rot, invert, wvar, draw_frame, draw_timing)
 
     def _calc_hit_in_time(self):
 
@@ -63,7 +63,7 @@ class EventDisplay():
         elif source == 'diffuser':
             return (hit_in_time, diffuser_t)
         
-    def _build_pmt_df(self, tree, wvar, fit, cut):
+    def _build_pmt_df(self, tree, wvar, fit, cut, draw_timing):
 
         print '\tBinning...'
 
@@ -86,8 +86,8 @@ class EventDisplay():
         else:
             time_str, self._time_markers = self._calc_hit_in_time()
             tree.Draw('cable_vec>>hist', '(%s)*(%s)' % (wstr, time_str), 'goff')
-
-        self._timing_data = root_numpy.tree2array(tree, "(time_vec - 1.0e9*sqrt(pow(pmtx_vec/100. - %s/100., 2)+pow(pmty_vec/100. - %s/100., 2)+pow(pmtz_vec/100. - %s/100., 2))/%s)" % (self._injector.Pos.X, self._injector.Pos.Y, self._injector.Pos.Z, c_light*1e6/1.333))
+        if draw_timing:
+            self._timing_data = root_numpy.tree2array(tree, "(time_vec - 1.0e9*sqrt(pow(pmtx_vec/100. - %s/100., 2)+pow(pmty_vec/100. - %s/100., 2)+pow(pmtz_vec/100. - %s/100., 2))/%s)" % (self._injector.Pos.X, self._injector.Pos.Y, self._injector.Pos.Z, c_light*1e6/1.333))
 
         if fit:
             hist_barrel = ROOT.TH2F('barrel', 'barrel', sk_constants.WCBarrelNumPMTHorizontal, -sk_constants.WCIDCircumference/2.0, sk_constants.WCIDCircumference/2.0, int(sk_constants.WCBarrelNRings*sk_constants.WCPMTperCellVertical), -sk_constants.WCIDHeight/2.0, sk_constants.WCIDHeight/2.0)
@@ -216,11 +216,11 @@ class EventDisplay():
         ax.plot(target_pos_s, target_pos.Z*cm, 'bx', alpha=0.5, label='TARGET')
         ax.plot(target_pos.X*cm+top_c[0], target_pos.Y*cm+top_c[1], 'bx', markersize=3, alpha=0.5)
         ax.plot(target_pos.X*cm+bottom_c[0], target_pos.Y*cm+bottom_c[1], 'bx', markersize=3, alpha=0.5)
-        ax.legend(loc=(0.76, 0.675), markerscale=0.7)._legend_box.align='right'
+        ax.legend(loc=(0.785, 0.670), markerscale=0.7)._legend_box.align='right'
 
         return
 
-    def _plot(self, cmap, fit, rot, invert, wvar, draw_frame):
+    def _plot(self, cmap, fit, rot, invert, wvar, draw_frame, draw_timing):
 
         print '\tPlotting...'
         self._setup_pyplot(invert)
@@ -238,7 +238,9 @@ class EventDisplay():
         self._draw_hits(ax, df, det_geom, cmap, invert)
         self._draw_inj_tar(ax, fit, det_geom)
         self._add_text(ax)
-        self._add_timing_plot(fig)
+        if draw_timing:
+            self._add_timing_plot(fig)
+        self._add_colourbar(fig, cmap, invert)
 
         plt_barrel_width = sk_constants.WCIDCircumference
         plt_barrel_height = sk_constants.WCIDHeight
@@ -256,6 +258,16 @@ class EventDisplay():
 
         return
 
+    def _add_colourbar(self, fig, cmap_name, invert):
+
+        ax = fig.add_axes([0.85, 0.15, 0.005, 0.7], frameon=True, facecolor='w')
+
+        cmap = self._get_cmap(cmap_name, invert)
+        norm = mpl.colors.Normalize(vmin=0, vmax=1)
+        cb1 = mpl.colorbar.ColorbarBase(ax, cmap=cmap, norm=norm, ticks=[])
+        cb1.outline.set_visible(False)
+        return
+
     def _add_timing_plot(self, fig):
 
         timing_data = np.concatenate(self._timing_data).ravel()
@@ -269,14 +281,14 @@ class EventDisplay():
 
         t1, t2 = self._time_markers
 
-        ax.axvline(t1, color='w', ls='--', linewidth=0.1)
-        ax.axvline(t2, color='w', ls='--', linewidth=0.1)
+        ax.axvline(t1, color='w', ls='--', dashes=(5, 10), linewidth=0.1)
+        ax.axvline(t2, color='w', ls='--', dashes=(5, 10), linewidth=0.1)
 
         return
 
     def _add_text(self, ax):
 
-        ax.text(0.077, 0.98,
+        ax.text(0.077, 0.97,
         '''
         KOREAN LASER FEB'19
 
@@ -320,7 +332,7 @@ class EventDisplay():
         off_axis_theta = abs(np.degrees(sig_theta - tar_theta))
         off_axis_phi = abs(np.degrees(sig_phi - tar_phi))
 
-        ax.text(0.90, 0.98, 
+        ax.text(0.90, 0.97, 
             u'''
             INJECTOR COORDS
             [%.2f, %.2f, %.2f] m
