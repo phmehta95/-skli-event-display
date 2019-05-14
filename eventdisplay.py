@@ -10,11 +10,12 @@ import matplotlib.pyplot as plt
 from collections import namedtuple
 from argparse import ArgumentParser
 
+from hepunits.constants import c_light
 from constants import *
 
 class EventDisplay():
     # Recommended cmaps: viridis, inferno, magma, afmhot, kindlmann, kindlmannext
-    def __init__(self, tree, run, wvar='occ', fit=True, norm='area', rot=0., cmap='plasma', invert=False):
+    def __init__(self, tree, run, wvar='occ', fit=True, norm='area', rot=0., cmap='plasma', invert=False, draw_frame=False, cut=True):
 
         self._run = run
         self._diffuser = Source.tostr(RunInfo.Runs[run].source)
@@ -22,18 +23,51 @@ class EventDisplay():
 
         print '\nPreparing run %s (%s %s) event display...' % (self._run, Injector.tostr(self._injector), self._diffuser)
 
-        self._pmt_df = self._build_pmt_df(tree, wvar, fit)
+        self._pmt_df = self._build_pmt_df(tree, wvar, fit, cut)
 
         if fit and self._diffuser is not 'diffuser':
             self._loc_signal()
 
-        self._plot(cmap, fit, rot, invert, wvar)
+        self._plot(cmap, fit, rot, invert, wvar, draw_frame)
 
-    def _build_pmt_df(self, tree, wvar, fit):
+    def _calc_hit_in_time(self):
+
+        injector = self._injector
+        source = self._diffuser
+
+        CORRECTED_TIME = "(time_vec - 1.0e9*sqrt(pow(pmtx_vec/100. - %s/100., 2)+pow(pmty_vec/100. - %s/100., 2)+pow(pmtz_vec/100. - %s/100., 2))/%s)" % (injector.Pos.X, injector.Pos.Y, injector.Pos.Z, c_light*1e6/1.333)
+
+        diffuser_t = (1040, 1110)
+        collimator_t = (1065, 1090)
+        bare_t = (1060, 1090)
+
+        if Injector.tostr(injector) == 'OLD_TOP':
+          if source == 'barefibre':
+            hit_in_time = "(%s > 700.) && (%s < 730.)" % (CORRECTED_TIME, CORRECTED_TIME)
+          elif source == 'collimator':
+            hit_in_time = "(%s > 700.) && (%s < 730.)" % (CORRECTED_TIME, CORRECTED_TIME)
+          elif source == 'diffuser':
+            hit_in_time = "(%s > 700.) && (%s < 820.)" % (CORRECTED_TIME, CORRECTED_TIME)
+        else:
+          if source == 'barefibre':
+            hit_in_time = "(%s > 1060.) && (%s < 1090.)" % (CORRECTED_TIME, CORRECTED_TIME)
+          elif source == 'collimator':
+            hit_in_time = "(%s > 1065.) && (%s < 1090.)" % (CORRECTED_TIME, CORRECTED_TIME)
+          elif source == 'diffuser':
+            hit_in_time = "(%s > 1040.) && (%s < 1110.)" % (CORRECTED_TIME, CORRECTED_TIME)
+
+        if source == 'barefibre':
+            return (hit_in_time, bare_t)
+        elif source == 'collimator':
+            return (hit_in_time, collimator_t)
+        elif source == 'diffuser':
+            return (hit_in_time, diffuser_t)
+        
+    def _build_pmt_df(self, tree, wvar, fit, cut):
 
         print '\tBinning...'
 
-        map_df = pd.read_csv('%s/pmt_id_pos_map.csv' % os.path.dirname(__file__))
+        map_df = pd.read_csv('%s/tables/pmt_id_pos_map.csv' % os.path.dirname(__file__))
 
         x_min = 0
         x_max = 11147
@@ -46,7 +80,14 @@ class EventDisplay():
         elif wvar is 'charge':
             wstr = 'charge_vec/Entries$'
             self._plot_name = 'CHARGE DISPLAY'
-        tree.Draw('cable_vec>>hist', wstr, 'goff')
+
+        if not cut:
+            tree.Draw('cable_vec>>hist', wstr, 'goff')
+        else:
+            time_str, self._time_markers = self._calc_hit_in_time()
+            tree.Draw('cable_vec>>hist', '(%s)*(%s)' % (wstr, time_str), 'goff')
+
+        self._timing_data = root_numpy.tree2array(tree, "(time_vec - 1.0e9*sqrt(pow(pmtx_vec/100. - %s/100., 2)+pow(pmty_vec/100. - %s/100., 2)+pow(pmtz_vec/100. - %s/100., 2))/%s)" % (self._injector.Pos.X, self._injector.Pos.Y, self._injector.Pos.Z, c_light*1e6/1.333))
 
         if fit:
             hist_barrel = ROOT.TH2F('barrel', 'barrel', sk_constants.WCBarrelNumPMTHorizontal, -sk_constants.WCIDCircumference/2.0, sk_constants.WCIDCircumference/2.0, int(sk_constants.WCBarrelNRings*sk_constants.WCPMTperCellVertical), -sk_constants.WCIDHeight/2.0, sk_constants.WCIDHeight/2.0)
@@ -128,7 +169,9 @@ class EventDisplay():
 
         return
 
-    def _draw_inj_tar(self, ax, fit):
+    def _draw_inj_tar(self, ax, fit, det_geom):
+
+        top_c, bottom_c = det_geom[1], det_geom[2]
 
         source = self._diffuser
 
@@ -140,7 +183,9 @@ class EventDisplay():
 
         beam_l = ((injector_pos.X*cm - target_pos.X*cm)**2 + (injector_pos.Y*cm - target_pos.Y*cm)**2 + (injector_pos.Z*cm - target_pos.Z*cm)**2)**0.5
 
-        ax.plot(injector_pos_s, injector_pos.Z*cm, 'wx', markerfacecolor='blue', alpha=0.35)
+        ax.plot(injector_pos_s, injector_pos.Z*cm, 'wx', alpha=0.35, label='INJECTOR')
+        ax.plot(injector_pos.X*cm+top_c[0], injector_pos.Y*cm+top_c[1], 'wx', markersize=3, alpha=0.35)
+        ax.plot(injector_pos.X*cm+bottom_c[0], injector_pos.Y*cm+bottom_c[1], 'wx', markersize=3, alpha=0.35)
 
         if source == 'barefibre' or source == 'collimator':
 
@@ -162,14 +207,20 @@ class EventDisplay():
         if fit:
 
             s_sig, z_sig = self._signal
+            x_sig, y_sig, z_sig = self._signal_cart
 
-            ax.plot(s_sig, z_sig, 'rx', markerfacecolor='green', alpha=0.5)
+            ax.plot(s_sig, z_sig, 'rx', alpha=0.5, label='SIGNAL')
+            ax.plot(x_sig+top_c[0], y_sig+top_c[1], 'rx', markersize=3, alpha=0.5)
+            ax.plot(x_sig+bottom_c[0], y_sig+bottom_c[1], 'rx', alpha=0.5, markersize=3)
 
-        ax.plot(target_pos_s, target_pos.Z*cm, 'bx', markerfacecolor='red', alpha=0.5)
+        ax.plot(target_pos_s, target_pos.Z*cm, 'bx', alpha=0.5, label='TARGET')
+        ax.plot(target_pos.X*cm+top_c[0], target_pos.Y*cm+top_c[1], 'bx', markersize=3, alpha=0.5)
+        ax.plot(target_pos.X*cm+bottom_c[0], target_pos.Y*cm+bottom_c[1], 'bx', markersize=3, alpha=0.5)
+        ax.legend(loc=(0.76, 0.675), markerscale=0.7)._legend_box.align='right'
 
         return
 
-    def _plot(self, cmap, fit=False, rot=0., invert=False, wvar='occ', draw_frame=False):
+    def _plot(self, cmap, fit, rot, invert, wvar, draw_frame):
 
         print '\tPlotting...'
         self._setup_pyplot(invert)
@@ -181,35 +232,64 @@ class EventDisplay():
         
         df = self._segment_detector(df)
 
-        fig, ax = plt.subplots()
+        fig, ax = plt.subplots(figsize=(5.2, 4.8))
 
         det_frame, det_geom = self._draw_detector_frame(ax, draw_frame)
         self._draw_hits(ax, df, det_geom, cmap, invert)
-        self._draw_inj_tar(ax, fit)
+        self._draw_inj_tar(ax, fit, det_geom)
         self._add_text(ax)
+        self._add_timing_plot(fig)
+
+        plt_barrel_width = sk_constants.WCIDCircumference
+        plt_barrel_height = sk_constants.WCIDHeight
+        plt_id_radius = sk_constants.WCIDDiameter/2.0
+        
+        ax.set_xlim(-plt_barrel_width/1.8, plt_barrel_width/1.8)
+        #plt.ylim(-1.1*(2.*plt_id_radius+(plt_barrel_height/2.0)), 1.1*(2.*plt_id_radius+(plt_barrel_height/2.0)))
 
         print '\tSaving figures...'
         for ext in ['.png', '.pdf']:
             fname = '%s/%s_%s_%s%s' % (self._diffuser, Injector.tostr(self._injector), self._diffuser, wvar, ext)
 
-            plt.savefig(fname, dpi=800)
+            plt.savefig(fname, dpi=800, bbox_inches='tight', pad_inches=0)
             print '\t\t%s saved!' % fname
+
+        return
+
+    def _add_timing_plot(self, fig):
+
+        timing_data = np.concatenate(self._timing_data).ravel()
+
+        ax = fig.add_axes([0.635, 0.17, 0.18, 0.18], facecolor='k')
+
+        n, bins, patches = ax.hist(timing_data, 5000, edgecolor='w', facecolor='k', linewidth=0.05, histtype='step')
+        ax.set_xlabel('TOF CORRECTED TIME (ns)', fontsize=3)
+        ax.ticklabel_format(axis='y', style='sci', scilimits=(0,0))
+        ax.set_xlim(1.025e3, 1.2e3)
+
+        t1, t2 = self._time_markers
+
+        ax.axvline(t1, color='w', ls='--', linewidth=0.1)
+        ax.axvline(t2, color='w', ls='--', linewidth=0.1)
+
         return
 
     def _add_text(self, ax):
 
-        ax.text(0.13, 0.98,
+        ax.text(0.077, 0.98,
         '''
         KOREAN LASER FEB'19
 
-        %s
-
         RUN %s
         %s %s
+        %s
         
-        %s EVENTS SCANNED
+        %s EVENTS IN RUN
 
-            ''' % (self._plot_name, self._run, Injector.tostr(self._injector), self._diffuser.upper(), str(self._no_events)),
+        CUT APPLIED TO TOF CORRECTED TIME:
+        (%d ns < TOF_T < %d ns)
+
+            ''' % (self._run, Injector.tostr(self._injector), self._diffuser.upper(), self._plot_name, str(self._no_events), self._time_markers[0], self._time_markers[1]),
             fontsize=4, horizontalalignment='left', verticalalignment='top', transform=ax.transAxes)
 
         tar_r_vec = (self._injector.Tar.X*cm - self._injector.Pos.X*cm, 
@@ -240,7 +320,7 @@ class EventDisplay():
         off_axis_theta = abs(np.degrees(sig_theta - tar_theta))
         off_axis_phi = abs(np.degrees(sig_phi - tar_phi))
 
-        ax.text(0.85, 0.98, 
+        ax.text(0.90, 0.98, 
             u'''
             INJECTOR COORDS
             [%.2f, %.2f, %.2f] m
@@ -263,22 +343,60 @@ class EventDisplay():
 
         return
 
-    def _setup_pyplot(self, invert):
+    def _setup_pyplot(self, invert, usetex=False):
 
-        mpl.rcParams['font.monospace'] = "DIN Alternate"
-        mpl.rcParams['font.family'] = "monospace"
+        if usetex:
+            mpl.rcParams['text.usetex'] = True
+            mpl.rcParams['font.family'] = 'serif' 
+        else:
+            mpl.rcParams['font.monospace'] = "DIN Alternate"
+            mpl.rcParams['font.family'] = "monospace"
+
+        mpl.rcParams['font.size'] = 8
+        mpl.rcParams['axes.labelsize'] = 8
+        mpl.rcParams['axes.linewidth'] = 0.1
+
+        mpl.rcParams['legend.frameon'] = False
+        mpl.rcParams['legend.fontsize'] = 4
+        mpl.rcParams['xtick.minor.width'] = 0.1
+        mpl.rcParams['ytick.minor.width'] = 0.1        
+        mpl.rcParams['xtick.major.width'] = 0.1
+        mpl.rcParams['ytick.major.width'] = 0.1
+
+        mpl.rcParams['xtick.major.size'] = 1.0
+        mpl.rcParams['xtick.minor.size'] = 0.3        
+        mpl.rcParams['ytick.major.size'] = 1.0
+        mpl.rcParams['ytick.minor.size'] = 0.3             
+
+        mpl.rcParams['xtick.major.pad'] = 1.0
+        mpl.rcParams['xtick.minor.pad'] = 1.0       
+        mpl.rcParams['ytick.major.pad'] = 1.0
+        mpl.rcParams['ytick.minor.pad'] = 1.0    
+
+        mpl.rcParams['xtick.labelsize'] = 2
+        mpl.rcParams['ytick.labelsize'] = 2
 
         if not invert:
-            mpl.rcParams['savefig.facecolor'] = 'black'
-            mpl.rcParams['savefig.edgecolor'] = 'black'
+
+            mpl.rcParams['savefig.facecolor'] = 'k'
+            mpl.rcParams['savefig.edgecolor'] = 'k'
             mpl.rcParams['text.color'] = 'w'
             mpl.rcParams['patch.edgecolor'] = 'w'
+            mpl.rcParams['axes.edgecolor'] = 'w'
+            mpl.rcParams['axes.labelcolor'] = 'w'
+            mpl.rcParams['xtick.color'] = 'w'
+            mpl.rcParams['ytick.color'] = 'w'
+
         else:
-            mpl.rcParams['savefig.facecolor'] = 'white'
-            mpl.rcParams['savefig.edgecolor'] = 'white'
+            mpl.rcParams['savefig.facecolor'] = 'w'
+            mpl.rcParams['savefig.edgecolor'] = 'w'
             mpl.rcParams['text.color'] = 'k'
             mpl.rcParams['patch.edgecolor'] = 'k'
-        
+            mpl.rcParams['axes.edgecolor'] = 'k'
+            mpl.rcParams['axes.labelcolor'] = 'k'
+            mpl.rcParams['xtick.color'] = 'w'
+            mpl.rcParams['ytick.color'] = 'w'
+
         return
 
     def _rotate_detector(self, data, rot):
@@ -323,13 +441,12 @@ class EventDisplay():
         patches = [barrel, top_cap, bottom_cap]
 
         collection = mpl.collections.PatchCollection(patches, match_original=True)
+
         if draw_frame:
             ax.add_collection(collection)
-        plt.axis('equal')
-        plt.xlim(-plt_barrel_width/1.8, plt_barrel_width/1.8)
-        plt.ylim(-1.1*(2.*plt_id_radius+(plt_barrel_height/2.0)), 1.1*(2.*plt_id_radius+(plt_barrel_height/2.0)))
 
-        plt.axis('off')
+        ax.axis('equal')
+        ax.axis('off')
 
         return collection, (barrel_c, top_c, bottom_c)
 
@@ -352,7 +469,6 @@ class EventDisplay():
 
         hit_patches = mpl.collections.PatchCollection(hits, match_original=True)
 
-
         ax.add_collection(hit_patches)
 
         return
@@ -372,7 +488,6 @@ class EventDisplay():
             pmt_patch = mpl.patches.Circle((x_pos + det_geom[1][0], y_pos + det_geom[1][1]), pmt_r, fill=True, facecolor=cmap(z_val), linewidth=None)
 
             hits.append(pmt_patch)
-
 
         hit_patches = mpl.collections.PatchCollection(hits, match_original=True)
 
@@ -402,10 +517,7 @@ class EventDisplay():
 
         return 
 
-    def _draw_hits(self, ax, data, det_geom, cmap_name, invert):
-
-        zmin = data['val'].values.min()
-        zmax = data['val'].values.max()
+    def _get_cmap(self, cmap_name, invert):
 
         if cmap_name is not 'kindlmann' and cmap_name is not 'kindlmannext':
 
@@ -413,16 +525,25 @@ class EventDisplay():
 
         elif cmap_name is 'kindlmann':
 
-            cmap_csv = pd.read_csv('%s/kindlmann-table-float-1024.csv' % os.path.dirname(__file__))
+            cmap_csv = pd.read_csv('%s/tables/kindlmann-table-float-1024.csv' % os.path.dirname(__file__))
             cmap = mpl.colors.ListedColormap(cmap_csv[['RGB_r', 'RGB_g', 'RGB_b']].values)
 
         elif cmap_name is 'kindlmannext':
 
-            cmap_csv = pd.read_csv('%s/extended-kindlmann-table-float-1024.csv' % os.path.dirname(__file__))
+            cmap_csv = pd.read_csv('%s/tables/extended-kindlmann-table-float-1024.csv' % os.path.dirname(__file__))
             cmap = mpl.colors.ListedColormap(cmap_csv[['RGB_r', 'RGB_g', 'RGB_b']].values)
 
         if invert:
             cmap = cmap.reversed()
+
+        return cmap
+
+    def _draw_hits(self, ax, data, det_geom, cmap_name, invert):
+
+        zmin = data['val'].values.min()
+        zmax = data['val'].values.max()
+
+        cmap = self._get_cmap(cmap_name, invert)
 
         data['val'] = data['val']/zmax
 
