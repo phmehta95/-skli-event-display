@@ -15,8 +15,8 @@ from hepunits.constants import c_light
 from constants import *
 
 class EventDisplay():
-    # Recommended cmaps: viridis, inferno, magma, afmhot, kindlmann, kindlmannext
-    def __init__(self, tree, run, wvar='occ', fit=True, norm='area', rot=0., cmap='plasma', invert=False, draw_frame=False, cut=True, draw_timing=True):
+    # Recommended cmaps: viridis, inferno, plasma, magma, afmhot, kindlmann, kindlmannext
+    def __init__(self, tree, run, wvar='occ', fit=False, norm='area', rot=0., cmap='plasma', invert=False, draw_frame=False, cut=True, draw_timing=True, correct=False):
 
         self._run = run
         self._diffuser = Source.tostr(RunInfo.Runs[run].source)
@@ -29,7 +29,30 @@ class EventDisplay():
         if fit and self._diffuser is not 'diffuser':
             self._loc_signal()
 
+        if correct:
+            self._do_corrections()
+
         self._plot(cmap, fit, rot, invert, wvar, draw_frame, draw_timing)
+
+    def _do_corrections():
+
+        self._do_solid_angle_correction()
+        self._do_angular_correction()
+        self._do_attenuation_correction()
+
+        return
+
+    def _do_solid_angle_correction(self):
+
+        return
+
+    def _do_angular_correction(self):
+
+        return
+
+    def _do_attenuation_correction(self):
+
+        return
 
     def _calc_hit_in_time(self):
 
@@ -230,7 +253,7 @@ class EventDisplay():
             fwhm_r = beam_init_r + beam_l*np.tan(np.radians(fwhm_theta_air*1.0003/1.333))
 
             fwhm_circle = mpl.patches.Circle((target_pos_s, target_pos.Z*cm), radius=fwhm_r, fill=False, edgecolor='blue', linewidth=0.5, alpha=0.3)
-            ax.add_artist(fwhm_circle)
+            #ax.add_artist(fwhm_circle)
 
         if fit and source != 'diffuser':
 
@@ -281,7 +304,7 @@ class EventDisplay():
         for ext in ['.png', '.pdf']:
             fname = '%s/%s_%s_%s%s' % (self._diffuser, Injector.tostr(self._injector), self._diffuser, wvar, ext)
 
-            plt.savefig(fname, dpi=800, bbox_inches='tight', pad_inches=0)
+            plt.savefig(fname, dpi=1400, bbox_inches='tight', pad_inches=0)
             print '\t\t%s saved!' % fname
 
         return
@@ -302,7 +325,7 @@ class EventDisplay():
 
         ax = fig.add_axes([0.635, 0.17, 0.195, 0.18], facecolor='k')
 
-        n, bins, patches = ax.hist(timing_data, 5000, edgecolor='w', facecolor='k', linewidth=0.05, histtype='step')
+        n, bins, patches = ax.hist(timing_data, 5000, edgecolor='w', facecolor='k', linewidth=0.1, histtype='step')
         ax.set_xlabel('TOF CORRECTED TIME (ns)', fontsize=3)
         ax.ticklabel_format(axis='y', style='sci', scilimits=(0,0))
         ax.set_xlim(1.025e3, 1.2e3)
@@ -596,14 +619,37 @@ class EventDisplay():
 
         return cmap
 
-    def _draw_hits(self, ax, data, det_geom, cmap_name, invert):
-
-        zmin = data['val'].values.min()
-        zmax = data['val'].values.max()
+    def _draw_hits(self, ax, data, det_geom, cmap_name, invert, norm_det=False, mask_injector=True):
 
         cmap = self._get_cmap(cmap_name, invert)
 
-        data['val'] = data['val']/zmax
+        if mask_injector:
+
+            mask_r = 0.707*3
+
+            injector_pos = self._injector.Pos
+
+            injector_pos_s = np.arctan2(injector_pos.X*cm, injector_pos.Y*cm)*((injector_pos.X*cm)**2 + (injector_pos.Y*cm)**2)**0.5
+
+            barrel_mask = data.query('pmt_det_region == \'barrel\' and (%f < pmts < %f) and (%f < pmtz < %f)' % (injector_pos_s - mask_r, injector_pos_s + mask_r, injector_pos.Z*cm - mask_r, injector_pos.Z*cm + mask_r)).index
+
+            data.iloc[barrel_mask, data.columns.get_loc("val")] = 0.0
+
+        if norm_det:
+
+            zmin = data['val'].values.min()
+            zmax = data['val'].values.max()
+
+            data['val'] = data['val']/zmax
+
+        else:
+            z_top = data.query('pmt_det_region == \'top\'').val.values
+            z_bottom = data.query('pmt_det_region == \'bottom\'').val.values
+            z_barrel = data.query('pmt_det_region == \'barrel\'').val.values
+
+            data.loc[data.pmt_det_region == 'top', 'val'] = z_top/z_top.max()
+            data.loc[data.pmt_det_region == 'bottom', 'val'] = z_bottom/z_bottom.max()
+            data.loc[data.pmt_det_region == 'barrel', 'val'] = z_barrel/z_barrel.max()
 
         self._draw_barrel_hits(ax, data, det_geom, cmap)
         self._draw_top_hits(ax, data, det_geom, cmap)
