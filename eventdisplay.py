@@ -16,7 +16,7 @@ from constants import *
 
 class EventDisplay():
     # Recommended cmaps: viridis, inferno, plasma, magma, afmhot, kindlmann, kindlmannext
-    def __init__(self, tree, run, wvar='occ', fit=False, norm='area', rot=0., cmap='plasma', invert=False, draw_frame=False, cut=True, draw_timing=True, correct=False):
+    def __init__(self, tree, run, wvar='occ', fit=True, norm='area', rot=0., cmap='plasma', invert=False, draw_frame=False, cut=True, draw_timing=True, correct=False, logz=False):
 
         self._run = run
         self._diffuser = Source.tostr(RunInfo.Runs[run].source)
@@ -26,31 +26,107 @@ class EventDisplay():
 
         self._pmt_df = self._build_pmt_df(tree, wvar, fit, cut, draw_timing)
 
+        #plt.hist(self._pmt_df.val.values, bins=150)
+        #plt.yscale('log', nonposy='clip')
+        #plt.show(block=True)
+
         if fit and self._diffuser is not 'diffuser':
             self._loc_signal()
 
         if correct:
             self._do_corrections()
 
-        self._plot(cmap, fit, rot, invert, wvar, draw_frame, draw_timing)
+        self._plot(cmap, fit, rot, invert, wvar, draw_frame, draw_timing, correct, logz)
 
-    def _do_corrections():
+    def _do_corrections(self, gain=False, solid_angle=False, angular=False, attenuation=False):
 
-        self._do_solid_angle_correction()
-        self._do_angular_correction()
-        self._do_attenuation_correction()
+        self._pmt_df['tot_cor'] = 1.0
+
+        self._add_to_df()
+
+        if gain:
+            self._do_gain_correction()
+        if solid_angle:
+            self._do_solid_angle_correction()
+        if angular:
+            self._do_angular_correction()
+        if attenuation:
+            self._do_attenuation_correction()
+
+        corrections = {'gain': gain, 'solid angle': solid_angle, 'pmt angular acceptance' : angular, 'water attenuation' : attenuation}
+
+        correction_str = ''''''
+
+        for correction in corrections:
+
+            if corrections[correction]:
+
+                correction_str += '''
+                %s ''' % correction.upper()
+
+        self._corrections = correction_str
+
+        return
+
+    def _do_gain_correction(self):#TODO
+
+        return
+
+    def _add_to_df(self):
+
+        injector = self._injector.Pos
+        target = self._injector.Tar
+
+        self._pmt_df['pmt_inj_vec_x'] = self._pmt_df['pmtx'] - injector.X*cm
+        self._pmt_df['pmt_inj_vec_y'] = self._pmt_df['pmty'] - injector.Y*cm
+        self._pmt_df['pmt_inj_vec_z'] = self._pmt_df['pmtz'] - injector.Z*cm
+
+        self._pmt_df['pmt_inj_vec_mag'] = np.sqrt(np.square(self._pmt_df['pmt_inj_vec_x']) + np.square(self._pmt_df['pmt_inj_vec_y']) + np.square(self._pmt_df['pmt_inj_vec_z']))
+
+        self._pmt_df['tar_inj_vec_x'] = (target.X - injector.X)*cm
+        self._pmt_df['tar_inj_vec_y'] = (target.Y - injector.Y)*cm
+        self._pmt_df['tar_inj_vec_z'] = (target.Z - injector.Z)*cm
+
+        self._pmt_df['tar_inj_vec_mag'] = np.sqrt(np.square(self._pmt_df['tar_inj_vec_x']) + np.square(self._pmt_df['tar_inj_vec_y']) + np.square(self._pmt_df['tar_inj_vec_z']))
+
+
+        self._pmt_df['theta_dir'] = np.arccos((self._pmt_df['tar_inj_vec_x']*self._pmt_df['pmt_inj_vec_x'] + self._pmt_df['tar_inj_vec_y']*self._pmt_df['pmt_inj_vec_y'] + self._pmt_df['tar_inj_vec_z']*self._pmt_df['pmt_inj_vec_z'])/(self._pmt_df['pmt_inj_vec_mag']*self._pmt_df['tar_inj_vec_mag']))
+
+        plt.show(block=True)
 
         return
 
     def _do_solid_angle_correction(self):
 
+        self._pmt_df['solid_angle_corr'] = 1./(1.-(np.abs(self._pmt_df['theta_dir'])/np.pi))
+        self._pmt_df['tot_cor'] = self._pmt_df['tot_cor']*self._pmt_df['solid_angle_corr']
+
         return
 
     def _do_angular_correction(self):
 
+        conditions = [ self._pmt_df['pmt_det_region'] == 'top', 
+                        self._pmt_df['pmt_det_region'] == 'bottom',
+                        self._pmt_df['pmt_det_region'] == 'barrel']
+
+        choices = [1./np.square(np.cos(np.pi/2. - self._pmt_df['theta_dir'])),
+                    1./np.square(np.cos(np.pi/2. - self._pmt_df['theta_dir'])), 
+                    1./np.square(np.cos(self._pmt_df['theta_dir']))]
+
+        self._pmt_df['angular_correction'] = np.select(conditions, choices, default=1.0)
+
+        self._pmt_df['tot_cor'] = self._pmt_df['tot_cor']*self._pmt_df['angular_correction']
+
         return
 
     def _do_attenuation_correction(self):
+
+        l = 9800*cm # attenuation length in cm
+
+        self._pmt_df['attenuation_correction'] = np.exp(-(np.abs(self._pmt_df['pmtz'] - self._injector.Pos.Z*cm))/l)/np.exp(-(self._pmt_df['pmt_inj_vec_mag'])/l)
+        self._pmt_df['tot_cor'] = self._pmt_df['tot_cor']*self._pmt_df['attenuation_correction']
+
+        print self._pmt_df['attenuation_correction']
 
         return
 
@@ -59,11 +135,16 @@ class EventDisplay():
         injector = self._injector
         source = self._diffuser
 
-        CORRECTED_TIME = "(time_vec - 1.0e9*sqrt(pow(pmtx_vec/100. - %s/100., 2)+pow(pmty_vec/100. - %s/100., 2)+pow(pmtz_vec/100. - %s/100., 2))/%s)" % (injector.Pos.X, injector.Pos.Y, injector.Pos.Z, c_light*1e6/1.333)
+        #CORRECTED_TIME = "(time_vec - 1.0e9*sqrt(pow(pmtx_vec/100. - %s/100., 2)+pow(pmty_vec/100. - %s/100., 2)+pow(pmtz_vec/100. - %s/100., 2))/%s)" % (injector.Pos.X, injector.Pos.Y, injector.Pos.Z, c_light*1e6/1.333)
+        CORRECTED_TIME = "(time_vec - 1.0e9*sqrt(pow(pmtx_vec/100. - %s/100., 2)+pow(pmty_vec/100. - %s/100., 2)+pow(pmtz_vec/100. - %s/100., 2))/%s - (Sum$(mon_time_vec*(mon_cable_vec==11256))/Sum$((mon_cable_vec==11256))))" % (injector.Pos.X, injector.Pos.Y, injector.Pos.Z, c_light*1e6/1.333)
+
+        #diffuser_t = (1060, 1095)
+        #collimator_t = (1065, 1090)
+        #bare_t = (1060, 1090)
 
         diffuser_t = (1060, 1095)
-        collimator_t = (1065, 1090)
-        bare_t = (1060, 1090)
+        collimator_t = (600, 1000)
+        bare_t = (770, 1200)
 
         if Injector.tostr(injector) == 'OLD_TOP':
           if source == 'barefibre':
@@ -76,7 +157,7 @@ class EventDisplay():
           if source == 'barefibre':
             hit_in_time = "(%s > 1060.) && (%s < 1090.)" % (CORRECTED_TIME, CORRECTED_TIME)
           elif source == 'collimator':
-            hit_in_time = "(%s > 1065.) && (%s < 1090.)" % (CORRECTED_TIME, CORRECTED_TIME)
+            hit_in_time = "(%s > 600.) && (%s < 1000.)" % (CORRECTED_TIME, CORRECTED_TIME)
           elif source == 'diffuser':
             hit_in_time = "(%s > 1060.) && (%s < 1095.)" % (CORRECTED_TIME, CORRECTED_TIME)
 
@@ -113,7 +194,8 @@ class EventDisplay():
 
         if draw_timing:
 
-            self._timing_data = root_numpy.tree2array(tree, "(time_vec - 1.0e9*sqrt(pow(pmtx_vec/100. - %s/100., 2)+pow(pmty_vec/100. - %s/100., 2)+pow(pmtz_vec/100. - %s/100., 2))/%s)" % (self._injector.Pos.X, self._injector.Pos.Y, self._injector.Pos.Z, c_light*1e6/1.333))
+            #self._timing_data = root_numpy.tree2array(tree, "(time_vec - 1.0e9*sqrt(pow(pmtx_vec/100. - %s/100., 2)+pow(pmty_vec/100. - %s/100., 2)+pow(pmtz_vec/100. - %s/100., 2))/%s)" % (self._injector.Pos.X, self._injector.Pos.Y, self._injector.Pos.Z, c_light*1e6/1.333))
+            self._timing_data = root_numpy.tree2array(tree, "(time_vec - 1.0e9*sqrt(pow(pmtx_vec/100. - %s/100., 2)+pow(pmty_vec/100. - %s/100., 2)+pow(pmtz_vec/100. - %s/100., 2))/%s - (Sum$(mon_time_vec*(mon_cable_vec==11256))/Sum$((mon_cable_vec==11256))))" % (self._injector.Pos.X, self._injector.Pos.Y, self._injector.Pos.Z, c_light*1e6/1.333))
 
         if fit:
 
@@ -158,6 +240,8 @@ class EventDisplay():
         merged_df['pmty'] = merged_df['pmty']*cm
         merged_df['pmtz'] = merged_df['pmtz']*cm
 
+        merged_df = self._segment_detector(merged_df)
+
         return merged_df
 
     def _loc_signal(self):
@@ -197,12 +281,12 @@ class EventDisplay():
 
         elif source is 'collimator':
 
-            gaus = ROOT.TF2("f2","[0]*TMath::Gaus(x,[1],[2])*TMath::Gaus(y,[3],[4])", target_pos_s - fwhm_r*5.0, target_pos_s+5.0*fwhm_r, target_pos.Z*cm - 5.0*fwhm_r, target_pos.Z*cm + 5.*fwhm_r)
+            gaus = ROOT.TF2("f2","[0]*TMath::Gaus(x,[1],[2])*TMath::Gaus(y,[3],[4])", target_pos_s - fwhm_r*7.0, target_pos_s+7.0*fwhm_r, target_pos.Z*cm - 7.0*fwhm_r, target_pos.Z*cm + 7.*fwhm_r)
             sigma = 1.
-            gaus.SetParameters(1e4,target_pos_s,sigma,target_pos.Z*cm,sigma)
-            gaus.SetParLimits(1, target_pos_s - 3.*fwhm_r, target_pos_s+3.*fwhm_r)
+            gaus.SetParameters(1e4,target_pos_s +3.,sigma,target_pos.Z*cm,sigma)
+            gaus.SetParLimits(1, target_pos_s - 6.*fwhm_r, target_pos_s+6.*fwhm_r)
             gaus.SetParLimits(2, 0.0, 3.0)
-            gaus.SetParLimits(3, target_pos.Z*cm - 3.*fwhm_r, target_pos.Z*cm + 3.*fwhm_r)
+            gaus.SetParLimits(3, target_pos.Z*cm - 6.*fwhm_r, target_pos.Z*cm + 6.*fwhm_r)
             gaus.SetParLimits(4, 0.0, 3.0)
 
         self._barrel_root_hist.Fit(gaus, 'QRSMN')
@@ -243,6 +327,7 @@ class EventDisplay():
             if source is 'barefibre':
 
                 fwhm_theta_air = 22.80075328628417
+                full_theta_air = np.degrees(0.5)
                 beam_init_r = 0.1*mm
 
             elif source is 'collimator':
@@ -251,9 +336,12 @@ class EventDisplay():
                 beam_init_r = 0.9*mm
 
             fwhm_r = beam_init_r + beam_l*np.tan(np.radians(fwhm_theta_air*1.0003/1.333))
+            #full_r = beam_init_r + beam_l*np.tan(np.radians(full_theta_air*1.0003/1.333))
 
-            fwhm_circle = mpl.patches.Circle((target_pos_s, target_pos.Z*cm), radius=fwhm_r, fill=False, edgecolor='blue', linewidth=0.5, alpha=0.3)
-            #ax.add_artist(fwhm_circle)
+            fwhm_circle = mpl.patches.Circle((target_pos_s, target_pos.Z*cm), radius=fwhm_r, fill=False, edgecolor='cyan', linestyle='--', linewidth=0.5, alpha=0.3)
+            #full_circle = mpl.patches.Circle((target_pos_s, target_pos.Z*cm), radius=full_r, fill=False, edgecolor='cyan', linewidth=0.5, alpha=0.3)
+            ax.add_artist(fwhm_circle)
+            #ax.add_artist(full_circle)
 
         if fit and source != 'diffuser':
 
@@ -271,24 +359,34 @@ class EventDisplay():
 
         return
 
-    def _plot(self, cmap, fit, rot, invert, wvar, draw_frame, draw_timing):
+    def _plot(self, cmap, fit, rot, invert, wvar, draw_frame, draw_timing, correct, logz):
 
         print '\tPlotting...'
-        self._setup_pyplot(invert)
+
+        #plt.hist(np.degrees(self._pmt_df['theta_dir']), weights=self._pmt_df['val']*self._pmt_df['attenuation_correction'], label='attenuation_corrected', facecolor=None, bins=500, histtype='step')
+        #plt.hist(np.degrees(self._pmt_df['theta_dir']), weights=self._pmt_df['val']*self._pmt_df['solid_angle_corr'], label='solid_angle_corrected', facecolor=None, bins=500, histtype='step')
+        
+        #plt.hist(np.degrees(self._pmt_df['theta_dir']), weights=self._pmt_df['val'], label='uncorrected', facecolor=None, bins=500, histtype='step')
+        #plt.hist(np.degrees(self._pmt_df['theta_dir']), weights=self._pmt_df['val']*self._pmt_df['tot_cor'], label='tot_corrected', facecolor=None, bins=500, histtype='step')
+        #plt.legend()
+        #plt.show(block=True)
+
 
         df = self._pmt_df
+        #plt.hist(df['val'].values, bins=1000)
+        #plt.show(block=True)
 
+
+        self._setup_pyplot(invert)
         if int(rot) is not 0:
             df = self._rotate_detector(df, rot)
-        
-        df = self._segment_detector(df)
 
         fig, ax = plt.subplots(figsize=(5.2, 4.8))
 
         det_frame, det_geom = self._draw_detector_frame(ax, draw_frame)
-        self._draw_hits(ax, df, det_geom, cmap, invert)
+        self._draw_hits(ax, df, det_geom, cmap, invert, logz)
         self._draw_inj_tar(ax, fit, det_geom)
-        self._add_text(ax, fit)
+        self._add_text(ax, fit, correct)
         if draw_timing:
             self._add_timing_plot(fig)
         self._add_colourbar(fig, cmap, invert)
@@ -314,9 +412,11 @@ class EventDisplay():
         ax = fig.add_axes([0.85, 0.15, 0.005, 0.7], frameon=True, facecolor='w')
 
         cmap = self._get_cmap(cmap_name, invert)
-        norm = mpl.colors.Normalize(vmin=0, vmax=1)
-        cb1 = mpl.colorbar.ColorbarBase(ax, cmap=cmap, norm=norm, ticks=[])
+
+        norm = self._cmap_norm
+        cb1 = mpl.colorbar.ColorbarBase(ax, cmap=cmap, norm=norm)
         cb1.outline.set_visible(False)
+
         return
 
     def _add_timing_plot(self, fig):
@@ -328,7 +428,8 @@ class EventDisplay():
         n, bins, patches = ax.hist(timing_data, 5000, edgecolor='w', facecolor='k', linewidth=0.1, histtype='step')
         ax.set_xlabel('TOF CORRECTED TIME (ns)', fontsize=3)
         ax.ticklabel_format(axis='y', style='sci', scilimits=(0,0))
-        ax.set_xlim(1.025e3, 1.2e3)
+        #ax.set_xlim(1.025e3, 1.2e3)
+        ax.set_xlim(300, 1800)
 
         t1, t2 = self._time_markers
 
@@ -337,11 +438,11 @@ class EventDisplay():
 
         return
 
-    def _add_text(self, ax, fit):
+    def _add_text(self, ax, fit, correct):
 
         ax.text(0.077, 0.97,
         '''
-        KOREAN LASER FEB'19
+        LIVERPOOL LASER JULY'19
 
         RUN %s
         %s %s
@@ -356,6 +457,14 @@ class EventDisplay():
 
             ''' % (self._run, Injector.tostr(self._injector), self._diffuser.upper(), self._plot_name, str(self._run_start_tree), str(self._run_end_tree), str(self._no_events), self._time_markers[0], self._time_markers[1]),
             fontsize=4, horizontalalignment='left', verticalalignment='top', transform=ax.transAxes)
+        if correct:
+            ax.text(0.077, 0.76,
+            '''
+            CORRECTIONS APPLIED: %s
+            
+            
+            ''' % (self._corrections),
+                fontsize=4, horizontalalignment='left', verticalalignment='top', transform=ax.transAxes)
 
         if fit and self._diffuser is not 'diffuser':
 
@@ -544,7 +653,7 @@ class EventDisplay():
             z_val = getattr(hit, 'val')
 
             pmt_r = sk_constants.IDPMTRadius
-            pmt_patch = mpl.patches.Circle((s_pos, z_pos), pmt_r, fill=True, linewidth=None, facecolor=cmap(z_val))
+            pmt_patch = mpl.patches.Circle((s_pos, z_pos), pmt_r, fill=True, linewidth=None, facecolor=cmap(self._cmap_norm(z_val)))
 
             hits.append(pmt_patch)
 
@@ -566,7 +675,7 @@ class EventDisplay():
             x_pos = getattr(hit, 'pmtx')
             y_pos = getattr(hit, 'pmty')
             z_val = getattr(hit, 'val')
-            pmt_patch = mpl.patches.Circle((x_pos + det_geom[1][0], y_pos + det_geom[1][1]), pmt_r, fill=True, facecolor=cmap(z_val), linewidth=None)
+            pmt_patch = mpl.patches.Circle((x_pos + det_geom[1][0], y_pos + det_geom[1][1]), pmt_r, fill=True, facecolor=cmap(self._cmap_norm(z_val)), linewidth=None)
 
             hits.append(pmt_patch)
 
@@ -588,7 +697,7 @@ class EventDisplay():
             y_pos = getattr(hit, 'pmty')
             z_val = getattr(hit, 'val')
 
-            pmt_patch = mpl.patches.Circle((x_pos + det_geom[2][0], y_pos + det_geom[2][1]), pmt_r, fill=True, facecolor=cmap(z_val), linewidth=None)
+            pmt_patch = mpl.patches.Circle((x_pos + det_geom[2][0], y_pos + det_geom[2][1]), pmt_r, fill=True, facecolor=cmap(self._cmap_norm(z_val)), linewidth=None)
 
             hits.append(pmt_patch)
 
@@ -619,9 +728,7 @@ class EventDisplay():
 
         return cmap
 
-    def _draw_hits(self, ax, data, det_geom, cmap_name, invert, norm_det=False, mask_injector=True):
-
-        cmap = self._get_cmap(cmap_name, invert)
+    def _draw_hits(self, ax, data, det_geom, cmap_name, invert, logz, norm_det=True, mask_injector=False):
 
         if mask_injector:
 
@@ -633,23 +740,44 @@ class EventDisplay():
 
             barrel_mask = data.query('pmt_det_region == \'barrel\' and (%f < pmts < %f) and (%f < pmtz < %f)' % (injector_pos_s - mask_r, injector_pos_s + mask_r, injector_pos.Z*cm - mask_r, injector_pos.Z*cm + mask_r)).index
 
-            data.iloc[barrel_mask, data.columns.get_loc("val")] = 0.0
+            data.iloc[barrel_mask, data.columns.get_loc("val")] = np.nan
+            data = data.dropna()
+
+        #data['val'] = np.log10(data['val'] + 1e-6)
 
         if norm_det:
 
             zmin = data['val'].values.min()
             zmax = data['val'].values.max()
 
-            data['val'] = data['val']/zmax
+            self._zlims = zmin, zmax
+
+            print zmin, zmax
 
         else:
             z_top = data.query('pmt_det_region == \'top\'').val.values
             z_bottom = data.query('pmt_det_region == \'bottom\'').val.values
             z_barrel = data.query('pmt_det_region == \'barrel\'').val.values
 
-            data.loc[data.pmt_det_region == 'top', 'val'] = z_top/z_top.max()
-            data.loc[data.pmt_det_region == 'bottom', 'val'] = z_bottom/z_bottom.max()
-            data.loc[data.pmt_det_region == 'barrel', 'val'] = z_barrel/z_barrel.max()
+            data.loc[data.pmt_det_region == 'top', 'val'] = (z_top - z_top.min()) /(z_top.max() - z_top.min())
+            data.loc[data.pmt_det_region == 'bottom', 'val'] = (z_bottom - z_bottom.min()) /(z_bottom.max() - z_bottom.min())
+            data.loc[data.pmt_det_region == 'barrel', 'val'] = (z_barrel - z_barrel.min()) /(z_barrel.max() - z_barrel.min())
+
+        cmap = self._get_cmap(cmap_name, invert)
+
+
+        if not logz:
+            self._cmap_norm = mpl.colors.Normalize(vmin=self._zlims[0],vmax=self._zlims[1], clip=True)
+        else:
+
+            data.iloc[data.query('val < 1e-6').index, data.columns.get_loc("val")] = np.nan
+            data = data.dropna()
+
+            zmin = data['val'].values.min()
+            zmax = data['val'].values.max()
+
+            self._zlims = zmin, zmax
+            self._cmap_norm = mpl.colors.LogNorm(vmin=1e-4,vmax=self._zlims[1], clip=True)
 
         self._draw_barrel_hits(ax, data, det_geom, cmap)
         self._draw_top_hits(ax, data, det_geom, cmap)

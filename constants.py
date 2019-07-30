@@ -14,13 +14,15 @@ class Source:
     BARE = 1
     COLLIMATOR = 2
     DIFFUSER = 3
+    MONITOR = 4
 
     _names = {BARE:"barefibre",
               COLLIMATOR:"collimator",
               DIFFUSER:"diffuser",
+              MONITOR:"monitor",
     }
 
-    ALL = [BARE, COLLIMATOR, DIFFUSER]
+    ALL = [BARE, COLLIMATOR, DIFFUSER, MONITOR]
 
     @classmethod
     def tostr(cls, code):
@@ -54,41 +56,60 @@ class Injector:
         return cls._names[code]
 
 class RunInfo:
-    RunInfo = namedtuple("RunInfo", ["runnum", "injector", "source", "intensity", "quality"])
+    RunInfo = namedtuple("RunInfo", ["runnum", "injector", "source", "intensity", "quality", "monitor"])
     RI = RunInfo
     Runs = {r.runnum:r for r in [
         # Tuesday 23rd January 2018
-        RI(77480, Injector.OLD_TOP, Source.BARE, 5, False),
-        RI(77481, Injector.OLD_TOP, Source.BARE, 0, False),
-        RI(77483, Injector.OLD_TOP, Source.BARE, 6, True),
-        RI(77484, Injector.OLD_TOP, Source.BARE, 7, True),
-        RI(77485, Injector.OLD_TOP, Source.BARE, 5, True),
-        RI(77486, Injector.OLD_TOP, Source.BARE, 8, True),
-        RI(77488, Injector.OLD_TOP, Source.COLLIMATOR, 5, True),
-        RI(77489, Injector.OLD_TOP, Source.COLLIMATOR, 6, True),
-        RI(77490, Injector.OLD_TOP, Source.COLLIMATOR, 7, True),
+        RI(77480, Injector.OLD_TOP, Source.BARE, 5, False, True),
+        RI(77481, Injector.OLD_TOP, Source.BARE, 0, False, True),
+        RI(77483, Injector.OLD_TOP, Source.BARE, 6, True, True),
+        RI(77484, Injector.OLD_TOP, Source.BARE, 7, True, True),
+        RI(77485, Injector.OLD_TOP, Source.BARE, 5, True, True),
+        RI(77486, Injector.OLD_TOP, Source.BARE, 8, True, True),
+        RI(77488, Injector.OLD_TOP, Source.COLLIMATOR, 5, True, True),
+        RI(77489, Injector.OLD_TOP, Source.COLLIMATOR, 6, True, True),
+        RI(77490, Injector.OLD_TOP, Source.COLLIMATOR, 7, True, True),
         # Wednesday 24th January 2018
-        RI(77496, Injector.OLD_TOP, Source.COLLIMATOR, 8, True),
-        RI(77497, Injector.OLD_TOP, Source.DIFFUSER, 10, True),
-        RI(77498, Injector.OLD_TOP, Source.DIFFUSER, 15, True),
-        RI(77499, Injector.OLD_TOP, Source.DIFFUSER, 20, True),
-        RI(77500, Injector.OLD_TOP, Source.DIFFUSER, 25, True),
+        RI(77496, Injector.OLD_TOP, Source.COLLIMATOR, 8, True, True),
+        RI(77497, Injector.OLD_TOP, Source.DIFFUSER, 10, True, True),
+        RI(77498, Injector.OLD_TOP, Source.DIFFUSER, 15, True, True),
+        RI(77499, Injector.OLD_TOP, Source.DIFFUSER, 20, True, True),
+        RI(77500, Injector.OLD_TOP, Source.DIFFUSER, 25, True, True),
         # Tuesday 5th February 2019
-        RI(80174, Injector.B1, Source.COLLIMATOR, None, True),
-        RI(80175, Injector.B2, Source.COLLIMATOR, None, True),
-        RI(80176, Injector.B3, Source.COLLIMATOR, None, True),
-        RI(80177, Injector.B4, Source.COLLIMATOR, None, True),
-        RI(80178, Injector.B5, Source.COLLIMATOR, None, True),
-        RI(80180, Injector.B1, Source.DIFFUSER, None, True),
-        RI(80181, Injector.B2, Source.DIFFUSER, None, True),
-        RI(80182, Injector.B3, Source.DIFFUSER, None, True),
-        RI(80183, Injector.B4, Source.DIFFUSER, None, True),
-        RI(80184, Injector.B5, Source.DIFFUSER, None, True),
-        RI(80186, Injector.B1, Source.BARE, None, True),
-        RI(80187, Injector.B2, Source.BARE, None, True),
-        RI(80188, Injector.B3, Source.BARE, None, True),
-        RI(80189, Injector.B4, Source.BARE, None, True),
-        RI(80190, Injector.B5, Source.BARE, None, True),
+        # RI(80174, Injector.B1, Source.COLLIMATOR, None, True, False),
+        # RI(80175, Injector.B2, Source.COLLIMATOR, None, True, False),
+        # RI(80176, Injector.B3, Source.COLLIMATOR, None, True, False),
+        # RI(80177, Injector.B4, Source.COLLIMATOR, None, True, False),
+        # RI(80178, Injector.B5, Source.COLLIMATOR, None, True, False),
+        RI(80180, Injector.B1, Source.DIFFUSER, None, True, False),
+        RI(80181, Injector.B2, Source.DIFFUSER, None, True, False),
+        RI(80182, Injector.B3, Source.DIFFUSER, None, True, False),
+        RI(80183, Injector.B4, Source.DIFFUSER, None, True, False),
+        RI(80184, Injector.B5, Source.DIFFUSER, None, True, False),
+        #RI(80186, Injector.B1, Source.BARE, None, True, False),
+        #RI(80187, Injector.B2, Source.BARE, None, True, False),
+        #RI(80188, Injector.B3, Source.BARE, None, True, False),
+        #RI(80189, Injector.B4, Source.BARE, None, True, False),
+        #RI(80190, Injector.B5, Source.BARE, None, True, False),
+        # July 2019
+        RI(81390, Injector.B1, Source.COLLIMATOR, None, True, True),
+        RI(81391, Injector.B2, Source.COLLIMATOR, None, True, True),
+        RI(81392, Injector.B3, Source.COLLIMATOR, None, True, True),
+        RI(81393, Injector.B4, Source.COLLIMATOR, None, True, True),
+        RI(81394, Injector.B5, Source.COLLIMATOR, None, True, True),
+        RI(81397, Injector.B1, Source.DIFFUSER, None, True, True),
+        RI(81398, Injector.B2, Source.DIFFUSER, None, True, True),
+        RI(81399, Injector.B3, Source.DIFFUSER, None, True, True),
+        RI(81400, Injector.B4, Source.DIFFUSER, None, True, True),
+        RI(81401, Injector.B5, Source.DIFFUSER, None, True, True),
+        RI(81395, Injector.B1, Source.BARE, None, True, True),
+        RI(81402, Injector.B2, Source.BARE, None, True, True),
+        RI(81403, Injector.B3, Source.BARE, None, True, True),
+        RI(81404, Injector.B4, Source.BARE, None, True, True),
+        RI(81405, Injector.B5, Source.BARE, None, True, True),
+        # Varied intensity runs
+        #RI(81410, Injector.B1, Source.COLLIMATOR, None, True, True),
+        #RI(81411, Injector.B3, Source.DIFFUSER, None, True, True),
     ]}
 
 class sk_constants:
