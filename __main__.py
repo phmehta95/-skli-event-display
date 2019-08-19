@@ -12,7 +12,7 @@ def parseargs():
 
     parser = ArgumentParser()
     parser.add_argument('-input-dir', '-i')
-    parser.add_argument('--diffuser', choices=['barefibre', 'collimator', 'diffuser'], default='barefibre')
+    parser.add_argument('--diffuser', choices=['barefibre', 'collimator', 'diffuser', 'monitor'], default='barefibre')
     parser.add_argument('--injector', choices=['B1', 'B2', 'B3', 'B4', 'B5'], default='B1')
     parser.add_argument('-b', '--batch', action='store_true', default=False)
     parser.add_argument('-p', '--profile', action='store_true', default=False)
@@ -27,7 +27,7 @@ def run(args):
 
     chain, run = load_data(args)
 
-    EventDisplay(chain, run)
+    EventDisplay(chain, run, wvar='occ', tof_cut_override=RunInfo.Runs[run].time_sel, fit=False)
 
     return
 

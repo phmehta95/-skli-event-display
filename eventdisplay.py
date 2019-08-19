@@ -16,15 +16,16 @@ from constants import *
 
 class EventDisplay():
     # Recommended cmaps: viridis, inferno, plasma, magma, afmhot, kindlmann, kindlmannext
-    def __init__(self, tree, run, wvar='occ', fit=True, norm='area', rot=0., cmap='plasma', invert=False, draw_frame=False, cut=True, draw_timing=True, correct=False, logz=False):
+    def __init__(self, tree, run, wvar='occ', fit=True, norm='area', rot=0., cmap='plasma', invert=False, draw_frame=False, tof_cut=True, walltime_cut=True, draw_timing=True, correct=False, logz=False, tof_cut_override=None):
 
         self._run = run
         self._diffuser = Source.tostr(RunInfo.Runs[run].source)
         self._injector = RunInfo.Runs[run].injector
+        self._monitor = RunInfo.Runs[run].monitor
 
         print '\nPreparing run %s (%s %s) event display...' % (self._run, Injector.tostr(self._injector), self._diffuser)
 
-        self._pmt_df = self._build_pmt_df(tree, wvar, fit, cut, draw_timing)
+        self._pmt_df = self._build_pmt_df(tree, wvar, fit, tof_cut, walltime_cut, draw_timing, tof_cut_override)
 
         #plt.hist(self._pmt_df.val.values, bins=150)
         #plt.yscale('log', nonposy='clip')
@@ -55,7 +56,7 @@ class EventDisplay():
 
         corrections = {'gain': gain, 'solid angle': solid_angle, 'pmt angular acceptance' : angular, 'water attenuation' : attenuation}
 
-        correction_str = ''''''
+        correction_str = ''
 
         for correction in corrections:
 
@@ -126,25 +127,41 @@ class EventDisplay():
         self._pmt_df['attenuation_correction'] = np.exp(-(np.abs(self._pmt_df['pmtz'] - self._injector.Pos.Z*cm))/l)/np.exp(-(self._pmt_df['pmt_inj_vec_mag'])/l)
         self._pmt_df['tot_cor'] = self._pmt_df['tot_cor']*self._pmt_df['attenuation_correction']
 
-        print self._pmt_df['attenuation_correction']
-
         return
 
-    def _calc_hit_in_time(self):
+    def _get_tof_time_exp(self, monitor=True):
+
+        if monitor:
+
+            tof_time_exp = '(time_vec - 1.0e9*sqrt(pow(pmtx_vec/100. - %s/100., 2)+pow(pmty_vec/100. - %s/100., 2)+pow(pmtz_vec/100. - %s/100., 2))/%s - (Sum$(mon_time_vec*(mon_cable_vec==%s))/Sum$((mon_cable_vec==%s))))' % (self._injector.Pos.X, self._injector.Pos.Y, self._injector.Pos.Z, c_light*1e6/1.333, self._monitor, self._monitor)
+        else:
+            tof_time_exp = '(time_vec - 1.0e9*sqrt(pow(pmtx_vec/100. - %s/100., 2)+pow(pmty_vec/100. - %s/100., 2)+pow(pmtz_vec/100. - %s/100., 2))/%s)' % (injector.Pos.X, injector.Pos.Y, injector.Pos.Z, c_light*1e6/1.333)
+
+        return tof_time_exp
+
+    def _calc_hit_in_time(self, override=None):
 
         injector = self._injector
         source = self._diffuser
 
         #CORRECTED_TIME = "(time_vec - 1.0e9*sqrt(pow(pmtx_vec/100. - %s/100., 2)+pow(pmty_vec/100. - %s/100., 2)+pow(pmtz_vec/100. - %s/100., 2))/%s)" % (injector.Pos.X, injector.Pos.Y, injector.Pos.Z, c_light*1e6/1.333)
-        CORRECTED_TIME = "(time_vec - 1.0e9*sqrt(pow(pmtx_vec/100. - %s/100., 2)+pow(pmty_vec/100. - %s/100., 2)+pow(pmtz_vec/100. - %s/100., 2))/%s - (Sum$(mon_time_vec*(mon_cable_vec==11256))/Sum$((mon_cable_vec==11256))))" % (injector.Pos.X, injector.Pos.Y, injector.Pos.Z, c_light*1e6/1.333)
+        #CORRECTED_TIME = "(time_vec - 1.0e9*sqrt(pow(pmtx_vec/100. - %s/100., 2)+pow(pmty_vec/100. - %s/100., 2)+pow(pmtz_vec/100. - %s/100., 2))/%s - (Sum$(mon_time_vec*(mon_cable_vec==11256))/Sum$((mon_cable_vec==11256))))" % (injector.Pos.X, injector.Pos.Y, injector.Pos.Z, c_light*1e6/1.333)
 
+        if self._monitor is not None:
+            CORRECTED_TIME = self._get_tof_time_exp(self._monitor)
+        else:
+            CORRECTED_TIME = self._get_tof_time_exp()
+
+        if override is not None:
+            print 'TIME SELECTION OVERRIDDEN', override
+            return ('(%s > %s)&&(%s < %s)' % (CORRECTED_TIME, override[0], CORRECTED_TIME, override[1]), override)
         #diffuser_t = (1060, 1095)
         #collimator_t = (1065, 1090)
         #bare_t = (1060, 1090)
 
-        diffuser_t = (1060, 1095)
+        diffuser_t = (600, 850)
         collimator_t = (600, 1000)
-        bare_t = (770, 1200)
+        bare_t = (600, 780)
 
         if Injector.tostr(injector) == 'OLD_TOP':
           if source == 'barefibre':
@@ -155,11 +172,11 @@ class EventDisplay():
             hit_in_time = "(%s > 700.) && (%s < 820.)" % (CORRECTED_TIME, CORRECTED_TIME)
         else:
           if source == 'barefibre':
-            hit_in_time = "(%s > 1060.) && (%s < 1090.)" % (CORRECTED_TIME, CORRECTED_TIME)
+            hit_in_time = "(%s > %s) && (%s < %s)" % (CORRECTED_TIME, bare_t[0], CORRECTED_TIME, bare_t[1])
           elif source == 'collimator':
-            hit_in_time = "(%s > 600.) && (%s < 1000.)" % (CORRECTED_TIME, CORRECTED_TIME)
+            hit_in_time = "(%s > %s) && (%s < %s)" % (CORRECTED_TIME, collimator_t[0], CORRECTED_TIME, collimator_t[1])
           elif source == 'diffuser':
-            hit_in_time = "(%s > 1060.) && (%s < 1095.)" % (CORRECTED_TIME, CORRECTED_TIME)
+            hit_in_time = "(%s > %s) && (%s < %s)" % (CORRECTED_TIME, diffuser_t[0], CORRECTED_TIME, diffuser_t[1])
 
         if source == 'barefibre':
             return (hit_in_time, bare_t)
@@ -167,8 +184,28 @@ class EventDisplay():
             return (hit_in_time, collimator_t)
         elif source == 'diffuser':
             return (hit_in_time, diffuser_t)
+
+    def _get_event_id_cut_exp(self):
+
+        # Load all cut tables
+        flist = glob(os.path.join(os.path.dirname(__file__), 'cuts', '*.csv'))
+
+        cut_df = pd.concat([pd.read_csv(f) for f in flist])
+
+        matched_df =  cut_df.loc[cut_df['Run No.'] == self._run]
+
+        # Find matching entry for this run
+
+        # 
+        if not matched_df.empty:
+            event_cut = matched_df['Event No.'].values[0]
+            varexp = '(nev < %s)' % event_cut
+        else:
+            varexp = '(1)'
+
+        return varexp
         
-    def _build_pmt_df(self, tree, wvar, fit, cut, draw_timing):
+    def _build_pmt_df(self, tree, wvar, fit, tof_cut, walltime_cut, draw_timing, tof_cut_override):
 
         print '\tBinning...'
 
@@ -186,16 +223,29 @@ class EventDisplay():
             wstr = 'charge_vec/Entries$'
             self._plot_name = 'CHARGE DISPLAY'
 
-        if not cut:
-            tree.Draw('cable_vec>>hist', wstr, 'goff')
-        else:
-            time_str, self._time_markers = self._calc_hit_in_time()
-            tree.Draw('cable_vec>>hist', '(%s)*(%s)' % (wstr, time_str), 'goff')
+
+        if not tof_cut and not walltime_cut:
+            varexp = '(%s)' % wstr
+
+        elif tof_cut and not walltime_cut:
+            time_str, self._time_markers = self._calc_hit_in_time(tof_cut_override)
+            varexp = '(%s)*(%s)' % (wstr, time_str)
+
+        elif tof_cut and walltime_cut:
+            time_str, self._time_markers = self._calc_hit_in_time(tof_cut_override)
+            walltime_sel_exp = self._get_event_id_cut_exp()
+            varexp = '(%s)*(%s)*(%s)' % (wstr, time_str, walltime_sel_exp)
+
+        tree.Draw('cable_vec>>hist', varexp, 'goff')
 
         if draw_timing:
 
             #self._timing_data = root_numpy.tree2array(tree, "(time_vec - 1.0e9*sqrt(pow(pmtx_vec/100. - %s/100., 2)+pow(pmty_vec/100. - %s/100., 2)+pow(pmtz_vec/100. - %s/100., 2))/%s)" % (self._injector.Pos.X, self._injector.Pos.Y, self._injector.Pos.Z, c_light*1e6/1.333))
-            self._timing_data = root_numpy.tree2array(tree, "(time_vec - 1.0e9*sqrt(pow(pmtx_vec/100. - %s/100., 2)+pow(pmty_vec/100. - %s/100., 2)+pow(pmtz_vec/100. - %s/100., 2))/%s - (Sum$(mon_time_vec*(mon_cable_vec==11256))/Sum$((mon_cable_vec==11256))))" % (self._injector.Pos.X, self._injector.Pos.Y, self._injector.Pos.Z, c_light*1e6/1.333))
+
+
+            #self._timing_data = root_numpy.tree2array(tree, "(time_vec - 1.0e9*sqrt(pow(pmtx_vec/100. - %s/100., 2)+pow(pmty_vec/100. - %s/100., 2)+pow(pmtz_vec/100. - %s/100., 2))/%s - (Sum$(mon_time_vec*(mon_cable_vec==11256))/Sum$((mon_cable_vec==11256))))" % (self._injector.Pos.X, self._injector.Pos.Y, self._injector.Pos.Z, c_light*1e6/1.333))            
+
+            self._timing_data = root_numpy.tree2array(tree, '(%s)*(%s)' % (self._get_tof_time_exp(self._monitor), self._get_event_id_cut_exp()))
 
         if fit:
 
@@ -245,6 +295,7 @@ class EventDisplay():
         return merged_df
 
     def _loc_signal(self):
+        
         print '\tFitting...'
 
         injector_pos = self._injector.Pos
@@ -363,21 +414,9 @@ class EventDisplay():
 
         print '\tPlotting...'
 
-        #plt.hist(np.degrees(self._pmt_df['theta_dir']), weights=self._pmt_df['val']*self._pmt_df['attenuation_correction'], label='attenuation_corrected', facecolor=None, bins=500, histtype='step')
-        #plt.hist(np.degrees(self._pmt_df['theta_dir']), weights=self._pmt_df['val']*self._pmt_df['solid_angle_corr'], label='solid_angle_corrected', facecolor=None, bins=500, histtype='step')
-        
-        #plt.hist(np.degrees(self._pmt_df['theta_dir']), weights=self._pmt_df['val'], label='uncorrected', facecolor=None, bins=500, histtype='step')
-        #plt.hist(np.degrees(self._pmt_df['theta_dir']), weights=self._pmt_df['val']*self._pmt_df['tot_cor'], label='tot_corrected', facecolor=None, bins=500, histtype='step')
-        #plt.legend()
-        #plt.show(block=True)
-
-
         df = self._pmt_df
-        #plt.hist(df['val'].values, bins=1000)
-        #plt.show(block=True)
 
-
-        self._setup_pyplot(invert)
+        self._setup_pyplot(invert, usetex=False)
         if int(rot) is not 0:
             df = self._rotate_detector(df, rot)
 
@@ -396,12 +435,13 @@ class EventDisplay():
         plt_id_radius = sk_constants.WCIDDiameter/2.0
         
         ax.set_xlim(-plt_barrel_width/1.8, plt_barrel_width/1.8)
-        #plt.ylim(-1.1*(2.*plt_id_radius+(plt_barrel_height/2.0)), 1.1*(2.*plt_id_radius+(plt_barrel_height/2.0)))
 
         print '\tSaving figures...'
         for ext in ['.png', '.pdf']:
-            fname = '%s/%s_%s_%s%s' % (self._diffuser, Injector.tostr(self._injector), self._diffuser, wvar, ext)
-
+            if logz:
+                fname = '%s/%s_%s_%s_log%s' % (self._diffuser, Injector.tostr(self._injector), self._diffuser, wvar, ext)
+            else:
+                fname = '%s/%s_%s_%s%s' % (self._diffuser, Injector.tostr(self._injector), self._diffuser, wvar, ext)
             plt.savefig(fname, dpi=1400, bbox_inches='tight', pad_inches=0)
             print '\t\t%s saved!' % fname
 
@@ -426,15 +466,19 @@ class EventDisplay():
         ax = fig.add_axes([0.635, 0.17, 0.195, 0.18], facecolor='k')
 
         n, bins, patches = ax.hist(timing_data, 5000, edgecolor='w', facecolor='k', linewidth=0.1, histtype='step')
-        ax.set_xlabel('TOF CORRECTED TIME (ns)', fontsize=3)
+        ax.set_xlabel('TOF CORRECTED TIME W.R.T MONITOR (ns)', fontsize=5)
+        
+        #ax.set_ylim(0.0, 0.2e6)
         ax.ticklabel_format(axis='y', style='sci', scilimits=(0,0))
+        #ax.set_ylim(0.0, 1e5)
         #ax.set_xlim(1.025e3, 1.2e3)
-        ax.set_xlim(300, 1800)
+        ax.set_xlim(0, 1200)
 
         t1, t2 = self._time_markers
 
         ax.axvline(t1, color='w', ls='--', dashes=(5, 10), linewidth=0.1)
         ax.axvline(t2, color='w', ls='--', dashes=(5, 10), linewidth=0.1)
+
 
         return
 
@@ -456,7 +500,7 @@ class EventDisplay():
         %d - %d ns
 
             ''' % (self._run, Injector.tostr(self._injector), self._diffuser.upper(), self._plot_name, str(self._run_start_tree), str(self._run_end_tree), str(self._no_events), self._time_markers[0], self._time_markers[1]),
-            fontsize=4, horizontalalignment='left', verticalalignment='top', transform=ax.transAxes)
+            fontsize=5, horizontalalignment='left', verticalalignment='top', transform=ax.transAxes)
         if correct:
             ax.text(0.077, 0.76,
             '''
@@ -542,8 +586,8 @@ class EventDisplay():
             mpl.rcParams['font.monospace'] = "DIN Alternate"
             mpl.rcParams['font.family'] = "monospace"
 
-        mpl.rcParams['font.size'] = 8
-        mpl.rcParams['axes.labelsize'] = 8
+        mpl.rcParams['font.size'] = 10
+        mpl.rcParams['axes.labelsize'] = 5
         mpl.rcParams['axes.linewidth'] = 0.1
 
         mpl.rcParams['legend.frameon'] = False
@@ -563,8 +607,8 @@ class EventDisplay():
         mpl.rcParams['ytick.major.pad'] = 1.0
         mpl.rcParams['ytick.minor.pad'] = 1.0    
 
-        mpl.rcParams['xtick.labelsize'] = 2
-        mpl.rcParams['ytick.labelsize'] = 2
+        mpl.rcParams['xtick.labelsize'] = 5
+        mpl.rcParams['ytick.labelsize'] = 5
 
         if not invert:
 
@@ -728,7 +772,7 @@ class EventDisplay():
 
         return cmap
 
-    def _draw_hits(self, ax, data, det_geom, cmap_name, invert, logz, norm_det=True, mask_injector=False):
+    def _draw_hits(self, ax, data, det_geom, cmap_name, invert, logz, norm_det=True, mask_injector=True):
 
         if mask_injector:
 
@@ -751,8 +795,6 @@ class EventDisplay():
             zmax = data['val'].values.max()
 
             self._zlims = zmin, zmax
-
-            print zmin, zmax
 
         else:
             z_top = data.query('pmt_det_region == \'top\'').val.values
