@@ -27,10 +27,6 @@ class EventDisplay():
 
         self._pmt_df = self._build_pmt_df(tree, wvar, fit, tof_cut, walltime_cut, draw_timing, tof_cut_override)
 
-        #plt.hist(self._pmt_df.val.values, bins=150)
-        #plt.yscale('log', nonposy='clip')
-        #plt.show(block=True)
-
         if fit and self._diffuser is not 'diffuser':
             self._loc_signal()
 
@@ -295,7 +291,7 @@ class EventDisplay():
         return merged_df
 
     def _loc_signal(self):
-        
+
         print '\tFitting...'
 
         injector_pos = self._injector.Pos
@@ -442,6 +438,7 @@ class EventDisplay():
                 fname = '%s/%s_%s_%s_log%s' % (self._diffuser, Injector.tostr(self._injector), self._diffuser, wvar, ext)
             else:
                 fname = '%s/%s_%s_%s%s' % (self._diffuser, Injector.tostr(self._injector), self._diffuser, wvar, ext)
+            os.makedirs(fname)
             plt.savefig(fname, dpi=1400, bbox_inches='tight', pad_inches=0)
             print '\t\t%s saved!' % fname
 
