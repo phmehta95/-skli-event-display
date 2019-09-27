@@ -226,7 +226,7 @@ class EventDisplay():
             CORRECTED_TIME = self._get_tof_time_exp()
 
         if override is not None:
-            print 'TIME SELECTION OVERRIDDEN', override
+            print '\t\tTiming selection overriden with markers: %s.' % str(override)
             return ('(%s > %s)&&(%s < %s)' % (CORRECTED_TIME, override[0], CORRECTED_TIME, override[1]), override)
         #diffuser_t = (1060, 1095)
         #collimator_t = (1065, 1090)

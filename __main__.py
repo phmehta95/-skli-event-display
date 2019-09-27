@@ -24,7 +24,7 @@ def parseargs():
     parser.add_argument('--source', choices=Source._enums.keys(), default=Source._names[Source.COLLIMATOR])
     parser.add_argument('--injector', choices=Injector._enums.keys(), default=Injector._names[Injector.B1])
     parser.add_argument('--run-period', choices=RunPeriod._enums.keys(), default=RunPeriod._names[RunPeriod.LIVERPOOL_LASER])
-    parser.add_argument('--run', default=None)
+    parser.add_argument('--run', type=int, default=None, nargs='+')
     parser.add_argument('-b', '--batch', action='store_true', default=False)
     parser.add_argument('-p', '--profile', action='store_true', default=False)
     args = parser.parse_args()
@@ -94,17 +94,18 @@ def get_runs(flist, *runs):
 
     Args:
         flist (list): The list of all files passed at command line.
-        *runs: The run IDs.
+        *runs: The run ID to selects.
 
     Returns:
         OrderedDict: A dict of run numbers as key and file path as value.
     """
 
     run_file_map = OrderedDict()
-
+    print '\tGetting runs...'
     for run in runs:
         for file in flist:
             if str(run) in str(file):
+                print '\t\tFound run %s: %s' % (run, file)
                 run_file_map[run] = file
 
     return run_file_map
@@ -184,7 +185,7 @@ def profile_func(func, args=[], kwargs={}, num=20):
     Returns:
         None
     """
-    
+
     prof = run_profiler(func, *args, **kwargs)
     ps = pstats.Stats(prof)
     for key in ["time", "cumulative"]:
