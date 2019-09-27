@@ -11,6 +11,14 @@ Pos = namedtuple("Pos", ["X", "Y", "Z"])
 Inj = namedtuple("Inj", ["Pos", "Tar"])
 
 class RunPeriod:
+    """Storage class with attributes representing the `run period` of recorded calibration data.
+
+    Attributes:
+        TOP_DEPLOYMENT (int): Enum representing data from the Jan. `18 top hatch deployment.
+        KOREAN_LASER (int): Enum representing data after barrel installation on Feb. `19, with the Korean laser as source.
+        LIVERPOOL_LASER (int): Enum representing data after barrel installation on July.`19, with the Liverpool laser as source.
+
+    """
 
     TOP_DEPLOYMENT = 1
     KOREAN_LASER = 2
@@ -42,6 +50,8 @@ class RunPeriod:
         return cls._dates[code]
 
 class Source:
+    """Storage class with attributes representing the source flashed in a particular calibration run.
+    """
 
     BARE = 1
     COLLIMATOR = 2
@@ -61,6 +71,9 @@ class Source:
         return cls._names[code]
 
 class Injector:
+    """Storage class with attributes representing the injector position and target of the source flashed in a particular calibration run.
+    """
+
     #OLD_TOP = Pos(-35.3, 777.7, 1802.7) # Location of Jan. SK deployment (AS ON WIKI)
     OLD_TOP = Inj(Pos(-38., 700., 1610.), Pos(-38., 700., -1810.)) # Location of Jan. SK deployment (AS IN THIS ANALYSIS CODE (?))
     NEW_TOP = Inj(Pos(-70.7, -777.7, 1802.7), Pos(-25.00, -694.5, -1810.0)) # Default for vertical laser analysis
@@ -88,45 +101,47 @@ class Injector:
         return cls._names[code]
 
 class RunInfo:
+    """Storage class containing important metadata for all runs taken with the SK-UKLI system.
+    """
     RunInfo = namedtuple("RunInfo", ["runperiod", "runnum", "injector", "source", "intensity", "quality", "monitor", "time_sel"])
     RI = RunInfo
     top_deployment_mon_id = 11161
     liverpool_mon_id = 11256
 
     Runs = {r.runnum:r for r in [
-        # # Tuesday 23rd January 2018
-        # RI(RunPeriod.TOP_DEPLOYMENT, 77480, Injector.OLD_TOP, Source.BARE, 5, False, top_deployment_mon_id, None),
-        # RI(RunPeriod.TOP_DEPLOYMENT, 77481, Injector.OLD_TOP, Source.BARE, 0, False, top_deployment_mon_id, None),
-        # RI(RunPeriod.TOP_DEPLOYMENT, 77483, Injector.OLD_TOP, Source.BARE, 6, True, top_deployment_mon_id, None),
-        # RI(RunPeriod.TOP_DEPLOYMENT, 77484, Injector.OLD_TOP, Source.BARE, 7, True, top_deployment_mon_id, None),
-        # RI(RunPeriod.TOP_DEPLOYMENT, 77485, Injector.OLD_TOP, Source.BARE, 5, True, top_deployment_mon_id, None),
-        # RI(RunPeriod.TOP_DEPLOYMENT, 77486, Injector.OLD_TOP, Source.BARE, 8, True, top_deployment_mon_id, None),
-        # RI(RunPeriod.TOP_DEPLOYMENT, 77488, Injector.OLD_TOP, Source.COLLIMATOR, 5, True, top_deployment_mon_id, None),
-        # RI(RunPeriod.TOP_DEPLOYMENT, 77489, Injector.OLD_TOP, Source.COLLIMATOR, 6, True, top_deployment_mon_id, None),
-        # RI(RunPeriod.TOP_DEPLOYMENT, 77490, Injector.OLD_TOP, Source.COLLIMATOR, 7, True, top_deployment_mon_id, None),
-        # # Wednesday 24th January 2018
-        # RI(RunPeriod.TOP_DEPLOYMENT, 77496, Injector.OLD_TOP, Source.COLLIMATOR, 8, True, top_deployment_mon_id, None),
-        # RI(RunPeriod.TOP_DEPLOYMENT, 77497, Injector.OLD_TOP, Source.DIFFUSER, 10, True, top_deployment_mon_id, None),
-        # RI(RunPeriod.TOP_DEPLOYMENT, 77498, Injector.OLD_TOP, Source.DIFFUSER, 15, True, top_deployment_mon_id, None),
-        # RI(RunPeriod.TOP_DEPLOYMENT, 77499, Injector.OLD_TOP, Source.DIFFUSER, 20, True, top_deployment_mon_id, None),
-        # RI(RunPeriod.TOP_DEPLOYMENT, 77500, Injector.OLD_TOP, Source.DIFFUSER, 25, True, top_deployment_mon_id, None),
-        # # Tuesday 5th February 2019
-        # RI(RunPeriod.KOREAN_LASER, 80174, Injector.B1, Source.COLLIMATOR, None, True, None, None),
-        # RI(RunPeriod.KOREAN_LASER, 80175, Injector.B2, Source.COLLIMATOR, None, True, None, None),
-        # RI(RunPeriod.KOREAN_LASER, 80176, Injector.B3, Source.COLLIMATOR, None, True, None, None),
-        # RI(RunPeriod.KOREAN_LASER, 80177, Injector.B4, Source.COLLIMATOR, None, True, None, None),
-        # RI(RunPeriod.KOREAN_LASER, 80178, Injector.B5, Source.COLLIMATOR, None, True, None, None),
-        # RI(RunPeriod.KOREAN_LASER, 80180, Injector.B1, Source.DIFFUSER, None, True, None, None),
-        # RI(RunPeriod.KOREAN_LASER, 80181, Injector.B2, Source.DIFFUSER, None, True, None, None),
-        # RI(RunPeriod.KOREAN_LASER, 80182, Injector.B3, Source.DIFFUSER, None, True, None, None),
-        # RI(RunPeriod.KOREAN_LASER, 80183, Injector.B4, Source.DIFFUSER, None, True, None, None),
-        # RI(RunPeriod.KOREAN_LASER, 80184, Injector.B5, Source.DIFFUSER, None, True, None, None),
-        # RI(RunPeriod.KOREAN_LASER, 80186, Injector.B1, Source.BARE, None, True, None, None),
-        # RI(RunPeriod.KOREAN_LASER, 80187, Injector.B2, Source.BARE, None, True, None, None),
-        # RI(RunPeriod.KOREAN_LASER, 80188, Injector.B3, Source.BARE, None, True, None, None),
-        # RI(RunPeriod.KOREAN_LASER, 80189, Injector.B4, Source.BARE, None, True, None, None),
-        # RI(RunPeriod.KOREAN_LASER, 80190, Injector.B5, Source.BARE, None, True, None, None),
-        # # July 2019
+        # Tuesday 23rd January 2018
+        RI(RunPeriod.TOP_DEPLOYMENT, 77480, Injector.OLD_TOP, Source.BARE, 5, False, top_deployment_mon_id, None),
+        RI(RunPeriod.TOP_DEPLOYMENT, 77481, Injector.OLD_TOP, Source.BARE, 0, False, top_deployment_mon_id, None),
+        RI(RunPeriod.TOP_DEPLOYMENT, 77483, Injector.OLD_TOP, Source.BARE, 6, True, top_deployment_mon_id, None),
+        RI(RunPeriod.TOP_DEPLOYMENT, 77484, Injector.OLD_TOP, Source.BARE, 7, True, top_deployment_mon_id, None),
+        RI(RunPeriod.TOP_DEPLOYMENT, 77485, Injector.OLD_TOP, Source.BARE, 5, True, top_deployment_mon_id, None),
+        RI(RunPeriod.TOP_DEPLOYMENT, 77486, Injector.OLD_TOP, Source.BARE, 8, True, top_deployment_mon_id, None),
+        RI(RunPeriod.TOP_DEPLOYMENT, 77488, Injector.OLD_TOP, Source.COLLIMATOR, 5, True, top_deployment_mon_id, None),
+        RI(RunPeriod.TOP_DEPLOYMENT, 77489, Injector.OLD_TOP, Source.COLLIMATOR, 6, True, top_deployment_mon_id, None),
+        RI(RunPeriod.TOP_DEPLOYMENT, 77490, Injector.OLD_TOP, Source.COLLIMATOR, 7, True, top_deployment_mon_id, None),
+        # Wednesday 24th January 2018
+        RI(RunPeriod.TOP_DEPLOYMENT, 77496, Injector.OLD_TOP, Source.COLLIMATOR, 8, True, top_deployment_mon_id, None),
+        RI(RunPeriod.TOP_DEPLOYMENT, 77497, Injector.OLD_TOP, Source.DIFFUSER, 10, True, top_deployment_mon_id, None),
+        RI(RunPeriod.TOP_DEPLOYMENT, 77498, Injector.OLD_TOP, Source.DIFFUSER, 15, True, top_deployment_mon_id, None),
+        RI(RunPeriod.TOP_DEPLOYMENT, 77499, Injector.OLD_TOP, Source.DIFFUSER, 20, True, top_deployment_mon_id, None),
+        RI(RunPeriod.TOP_DEPLOYMENT, 77500, Injector.OLD_TOP, Source.DIFFUSER, 25, True, top_deployment_mon_id, None),
+        # Tuesday 5th February 2019
+        RI(RunPeriod.KOREAN_LASER, 80174, Injector.B1, Source.COLLIMATOR, None, True, None, None),
+        RI(RunPeriod.KOREAN_LASER, 80175, Injector.B2, Source.COLLIMATOR, None, True, None, None),
+        RI(RunPeriod.KOREAN_LASER, 80176, Injector.B3, Source.COLLIMATOR, None, True, None, None),
+        RI(RunPeriod.KOREAN_LASER, 80177, Injector.B4, Source.COLLIMATOR, None, True, None, None),
+        RI(RunPeriod.KOREAN_LASER, 80178, Injector.B5, Source.COLLIMATOR, None, True, None, None),
+        RI(RunPeriod.KOREAN_LASER, 80180, Injector.B1, Source.DIFFUSER, None, True, None, None),
+        RI(RunPeriod.KOREAN_LASER, 80181, Injector.B2, Source.DIFFUSER, None, True, None, None),
+        RI(RunPeriod.KOREAN_LASER, 80182, Injector.B3, Source.DIFFUSER, None, True, None, None),
+        RI(RunPeriod.KOREAN_LASER, 80183, Injector.B4, Source.DIFFUSER, None, True, None, None),
+        RI(RunPeriod.KOREAN_LASER, 80184, Injector.B5, Source.DIFFUSER, None, True, None, None),
+        RI(RunPeriod.KOREAN_LASER, 80186, Injector.B1, Source.BARE, None, True, None, None),
+        RI(RunPeriod.KOREAN_LASER, 80187, Injector.B2, Source.BARE, None, True, None, None),
+        RI(RunPeriod.KOREAN_LASER, 80188, Injector.B3, Source.BARE, None, True, None, None),
+        RI(RunPeriod.KOREAN_LASER, 80189, Injector.B4, Source.BARE, None, True, None, None),
+        RI(RunPeriod.KOREAN_LASER, 80190, Injector.B5, Source.BARE, None, True, None, None),
+        # July 2019
         RI(RunPeriod.LIVERPOOL_LASER, 81390, Injector.B1, Source.COLLIMATOR, None, True, liverpool_mon_id, (350, 700)),
         RI(RunPeriod.LIVERPOOL_LASER, 81391, Injector.B2, Source.COLLIMATOR, None, True, liverpool_mon_id, (350, 750)),
         RI(RunPeriod.LIVERPOOL_LASER, 81392, Injector.B3, Source.COLLIMATOR, None, True, liverpool_mon_id, (350, 700)),
@@ -144,11 +159,14 @@ class RunInfo:
         RI(RunPeriod.LIVERPOOL_LASER, 81405, Injector.B4, Source.BARE, None, True, liverpool_mon_id, (600, 800)),
         RI(RunPeriod.LIVERPOOL_LASER, 81409, Injector.B1, Source.MONITOR, None, True, liverpool_mon_id, (360, 400)),
         # Varied intensity runs
-        #RI(81410, Injector.B1, Source.COLLIMATOR, None, True, True),
-        #RI(81411, Injector.B3, Source.DIFFUSER, None, True, True),
+        RI(RunPeriod.LIVERPOOL_LASER, 81410, Injector.B1, Source.COLLIMATOR, None, True, liverpool_mon_id, (350, 700)),
+        RI(RunPeriod.LIVERPOOL_LASER, 81411, Injector.B3, Source.DIFFUSER, None, True, liverpool_mon_id, (350, 575)),
     ]}
 
 class sk_constants:
+    """Storage class containing the Super-Kamiokande geometry, ripped from WCSim.
+    """
+
     #-1689.998779296875 1689.998779296875
     #-1689.6700439453125 1689.62939453125
     #-1810.0 1810.0

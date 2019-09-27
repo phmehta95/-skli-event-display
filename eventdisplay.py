@@ -15,17 +15,43 @@ from hepunits.constants import c_light
 from constants import *
 
 class EventDisplay():
-    # Recommended cmaps: viridis, inferno, plasma, magma, afmhot, kindlmann, kindlmannext
-    def __init__(self, tree, run, wvar='occ', fit=True, norm='area', rot=0., cmap='plasma', invert=False, draw_frame=False, tof_cut=True, walltime_cut=True, draw_timing=True, correct=False, logz=False, tof_cut_override=None):
+    
+    def __init__(self, tree, run, wvar='occ', fit=True, norm='area', rot=0., cmap='plasma', invert=False, draw_frame=False, tof_cut=True, event_id_cut=True, draw_timing=True, correct=False, logz=False, tof_cut_override=None):
+        """Generates an Super-Kamiokande event display in Matplotlib from a ROOT tree.
 
-        self._run = run
-        self._diffuser = Source.tostr(RunInfo.Runs[run].source)
-        self._injector = RunInfo.Runs[run].injector
-        self._monitor = RunInfo.Runs[run].monitor
+        Note:
+            We recommend perceptually uniform colourmaps for displaying physics data for clarity, such viridis, inferno, plasma, magma, afmhot, kindlmann and kindlmannext.
+
+        Args:
+            tree (ROOT:TTree/ROOT:TChain): The tree or chain to read data from.
+            run (int): The run number of the data loaded.
+            wvar (str, optional): The plot type to generate, choices are `occ` (occupancy) or `charge` (charge weighted), defaults to `occ`.
+            fit (bool, optional): Whether to make a fit to the wall data in order to locate the signal, defaults to True, overriden to False later if the source is a diffuser.
+            norm (str, optional): The normalisation mode, not implemented properly, defaults to `area`.
+            rot (float, optional): The angle to rotate the detector around the z-axis, doesn't work properly, defaults to 0.0.
+            cmap (str, optional): The default colourmap to use, this can be chosen from ones built-in to matplotlib or which have been interfaced from .csv in `_get_cmap`. 
+            invert (bool, optional): Inverts the colours of the plot (from dark mode to light mode), defaults to False.
+            draw_frame (bool, optional): Draws a detector frame around the detector regions, defaults to False.
+            tof_cut (bool, optional): Whether to cut on the time-of-flight corrected timing distribution, defaults to True.
+            event_id_cut (bool, optional): Whether to cut on the time-of-flight corrected timing distribution, defaults to True.
+            draw_timing (bool, optional): Whether to draw the time-of-flight corrected timing distribution in lower right of the event display, defaults to True.
+            correct (bool, optional): Whether to apply corrections to the data, the types of correction to be applied are selected in `_do_corrections`, defaults to False.
+            logz (bool, optional): Whether to make the colourbar scale logarithmic, defaults to False.
+            tof_cut_override (tuple(float, float), optional): Overrides the default time-of-flight time cut in `_calc_hit_in_time`, defaults to None.
+
+        """
+
+        self._tree = tree 
+        self._run = run 
+
+        self._diffuser = Source.tostr(RunInfo.Runs[run].source) #:str: The name of the diffuser type (eg. diffuser, collimator, barefibre).
+        self._injector = RunInfo.Runs[run].injector #:namedtuple: The injector position and target position contained within a namedtuple.
+        self._monitor = RunInfo.Runs[run].monitor #:monitor: The ID of the monitor available for this run.
 
         print '\nPreparing run %s (%s %s) event display...' % (self._run, Injector.tostr(self._injector), self._diffuser)
 
-        self._pmt_df = self._build_pmt_df(tree, wvar, fit, tof_cut, walltime_cut, draw_timing, tof_cut_override)
+        #:pandas:DataFrame: A dataframe storing information for every ID-PMT integrated over the run.
+        self._pmt_df = self._build_pmt_df(tree, wvar, fit, tof_cut, event_id_cut, draw_timing, tof_cut_override)
 
         if fit and self._diffuser is not 'diffuser':
             self._loc_signal()
@@ -36,6 +62,21 @@ class EventDisplay():
         self._plot(cmap, fit, rot, invert, wvar, draw_frame, draw_timing, correct, logz)
 
     def _do_corrections(self, gain=False, solid_angle=True, angular=False, attenuation=False):
+        """Applies selected corrections to the PMT DataFrame.
+
+        Note:
+            The gain correction is not implemented and maybe the angular correction is broken, I don't remember.
+
+        Args:
+            gain (bool, optional): Whether to apply the gain correction.
+            solid_angle (bool, optional): Whether to apply to solid angle correction.
+            angular (bool, optional): Whether to apply the angular correction.
+            attenuation (bool, optional): Whether to apply the attenuation correction.
+
+        Returns:
+            None
+
+        """
 
         self._pmt_df['tot_cor'] = 1.0
 
@@ -63,14 +104,25 @@ class EventDisplay():
 
         self._corrections = correction_str
 
-        return
-
     def _do_gain_correction(self):#TODO
+        """Applies the gain correction to the PMT DataFrame.
 
-        return
+        Note:
+            Not implemented.
+
+        Returns:
+            None
+
+        """
+        raise NotImplementedError('Gain correction not implemented.')
 
     def _add_to_df(self):
+        """Adds some useful variables characterising the source directionality to the PMT DataFrame.
 
+        Returns:
+            None
+
+        """
         injector = self._injector.Pos
         target = self._injector.Tar
 
@@ -88,19 +140,26 @@ class EventDisplay():
 
         self._pmt_df['theta_dir'] = np.arccos((self._pmt_df['tar_inj_vec_x']*self._pmt_df['pmt_inj_vec_x'] + self._pmt_df['tar_inj_vec_y']*self._pmt_df['pmt_inj_vec_y'] + self._pmt_df['tar_inj_vec_z']*self._pmt_df['pmt_inj_vec_z'])/(self._pmt_df['pmt_inj_vec_mag']*self._pmt_df['tar_inj_vec_mag']))
 
-        #plt.show(block=True)
-
-        return
-
     def _do_solid_angle_correction(self):
+        """Applies the solid angle correction to the PMT DataFrame.
 
+        Returns:
+            None
+
+        """
         self._pmt_df['solid_angle_corr'] = 1./(1.-(np.abs(self._pmt_df['theta_dir'])/np.pi))
         self._pmt_df['tot_cor'] = self._pmt_df['tot_cor']*self._pmt_df['solid_angle_corr']
 
-        return
-
     def _do_angular_correction(self):
+        """Applies the angular correction to the PMT DataFrame.
 
+        Note:
+            I don't remember if this works or not.
+
+        Returns:
+            None
+
+        """
         conditions = [ self._pmt_df['pmt_det_region'] == 'top', 
                         self._pmt_df['pmt_det_region'] == 'bottom',
                         self._pmt_df['pmt_det_region'] == 'barrel']
@@ -113,18 +172,29 @@ class EventDisplay():
 
         self._pmt_df['tot_cor'] = self._pmt_df['tot_cor']*self._pmt_df['angular_correction']
 
-        return
-
     def _do_attenuation_correction(self):
+        """Applies an attenuation correction to the PMT DataFrame.
+
+        Returns:
+            None
+
+        """
 
         l = 9800*cm # attenuation length in cm
 
         self._pmt_df['attenuation_correction'] = np.exp(-(np.abs(self._pmt_df['pmtz'] - self._injector.Pos.Z*cm))/l)/np.exp(-(self._pmt_df['pmt_inj_vec_mag'])/l)
         self._pmt_df['tot_cor'] = self._pmt_df['tot_cor']*self._pmt_df['attenuation_correction']
 
-        return
-
     def _get_tof_time_exp(self, monitor=True):
+        """Gets the time-of-flight corrected detector timing varexp string to use with ROOT:TTree.Draw().
+
+        Args:
+            monitor (bool, optional): Selects whether detector timing should be relative to the monitor timing, defaults to True.
+
+        Returns:
+            str: The time-of-flight corrected varexp.
+
+        """
 
         if monitor:
 
@@ -135,7 +205,15 @@ class EventDisplay():
         return tof_time_exp
 
     def _calc_hit_in_time(self, override=None):
+        """Gets the time-of-flight corrected timing cut expressions to use as selection in ROOT:TTree:Draw(varexp, selection), selects the signal region.
 
+        Args:
+            override (tuple(float, float)): These timing markers will override the default TOF timing markers f not None, defaults to None.
+
+        Returns:
+            tuple(str, tuple(float, float)): The selection expression and the TOF timing markers applied.
+
+        """
         injector = self._injector
         source = self._diffuser
 
@@ -181,17 +259,19 @@ class EventDisplay():
             return (hit_in_time, diffuser_t)
 
     def _get_event_id_cut_exp(self):
+        """Gets a selection expression for cutting on event ID, this is used when sometimes runs don't end properly. Cut tables stored in the cuts/ folder, if theres a match to the current run the appropriate event ID cut is loaded, otherwise no cut is applied.
 
-        # Load all cut tables
-        flist = glob(os.path.join(os.path.dirname(__file__), 'cuts', '*.csv'))
+        Returns:
+            tuple(str, tuple(float, float)): The event ID selection expression.
+
+        """
+
+        flist = glob(os.path.join(os.path.dirname(__file__), 'cuts', '*.csv')) # Load all cut tables
 
         cut_df = pd.concat([pd.read_csv(f) for f in flist])
 
-        matched_df =  cut_df.loc[cut_df['Run No.'] == self._run]
+        matched_df =  cut_df.loc[cut_df['Run No.'] == self._run] # Find matching entry for this run
 
-        # Find matching entry for this run
-
-        # 
         if not matched_df.empty:
             event_cut = matched_df['Event No.'].values[0]
             varexp = '(nev < %s)' % event_cut
@@ -200,7 +280,22 @@ class EventDisplay():
 
         return varexp
         
-    def _build_pmt_df(self, tree, wvar, fit, tof_cut, walltime_cut, draw_timing, tof_cut_override):
+    def _build_pmt_df(self, tree, wvar, fit, tof_cut, event_id_cut, draw_timing, tof_cut_override):
+        """Builds a pandas DataFrame of information (position, id, z value...) for each ID-PMT. 
+
+        Args:
+            tree (ROOT:TTree/ROOT:TChain): The tree or chain to read data from.
+            wvar (str, optional): The plot type to generate, choices are `occ` (occupancy) or `charge` (charge weighted), defaults to `occ`.
+            fit (bool, optional): Whether to make a fit to the wall data in order to locate the signal, defaults to True, overriden to False later if the source is a diffuser.
+            tof_cut (bool, optional): Whether to cut on the time-of-flight corrected timing distribution, defaults to True.
+            event_id_cut (bool, optional): Whether to cut on the time-of-flight corrected timing distribution, defaults to True.
+            draw_timing (bool, optional): Whether to draw the time-of-flight corrected timing distribution in lower right of the event display, defaults to True.
+            tof_cut_override (tuple(float, float), optional): Overrides the default time-of-flight time cut in `_calc_hit_in_time`, defaults to None.
+
+        Returns:
+            pandas:DataFrame: The PMT information DataFrame.
+
+        """
 
         print '\tBinning...'
 
@@ -219,17 +314,17 @@ class EventDisplay():
             self._plot_name = 'CHARGE DISPLAY'
 
 
-        if not tof_cut and not walltime_cut:
+        if not tof_cut and not event_id_cut:
             varexp = '(%s)' % wstr
 
-        elif tof_cut and not walltime_cut:
+        elif tof_cut and not event_id_cut:
             time_str, self._time_markers = self._calc_hit_in_time(tof_cut_override)
             varexp = '(%s)*(%s)' % (wstr, time_str)
 
-        elif tof_cut and walltime_cut:
+        elif tof_cut and event_id_cut:
             time_str, self._time_markers = self._calc_hit_in_time(tof_cut_override)
-            walltime_sel_exp = self._get_event_id_cut_exp()
-            varexp = '(%s)*(%s)*(%s)' % (wstr, time_str, walltime_sel_exp)
+            event_id_sel_exp = self._get_event_id_cut_exp()
+            varexp = '(%s)*(%s)*(%s)' % (wstr, time_str, event_id_sel_exp)
 
         tree.Draw('cable_vec>>hist', varexp, 'goff')
 
@@ -290,7 +385,12 @@ class EventDisplay():
         return merged_df
 
     def _loc_signal(self):
+        """Locates the signal by attempting a 2D Gaussian to the wall. 
 
+        Returns:
+            None
+
+        """
         print '\tFitting...'
 
         injector_pos = self._injector.Pos
@@ -351,7 +451,17 @@ class EventDisplay():
         return
 
     def _draw_inj_tar(self, ax, fit, det_geom):
+        """Draws the injector, target, signal positions onto the plot. 
 
+        Args:
+            ax (matplotlib.axes._subplots.AxesSubplot): The Matplotlib axis being used to draw the EventDisplay.
+            fit (bool): Whether there was fit made to the data and whether to draw it.
+            det_geom (tuple): Some storage of geometry variables for the detector plot.
+
+        Returns:
+            None
+
+        """
         top_c, bottom_c = det_geom[1], det_geom[2]
 
         source = self._diffuser
@@ -403,10 +513,24 @@ class EventDisplay():
         ax.plot(target_pos.X*cm+bottom_c[0], target_pos.Y*cm+bottom_c[1], 'bx', markersize=3, alpha=0.5)
         ax.legend(loc=(0.795, 0.670), markerscale=0.7)._legend_box.align='right'
 
-        return
-
     def _plot(self, cmap, fit, rot, invert, wvar, draw_frame, draw_timing, correct, logz):
+        """Draws the event display, with all details. 
 
+        Args:
+            cmap (str): The colourmap to use, this can be chosen from ones built-in to matplotlib or which have been interfaced from .csv in `_get_cmap`. 
+            fit (bool): Whether to make a fit to the wall data in order to locate the signal.
+            rot (float): The angle to rotate the detector around the z-axis, doesn't work properly.
+            invert (bool): Inverts the colours of the plot (from dark mode to light mode).
+            wvar (str): The plot type to generate, choices are `occ` (occupancy) or `charge` (charge weighted).
+            draw_frame (bool): Draws a detector frame around the detector regions.
+            draw_timing (bool): Whether to draw the time-of-flight corrected timing distribution in lower right of the event display.
+            correct (bool): Whether to apply corrections to the data, the types of correction to be applied are selected in `_do_corrections`.
+            logz (bool): Whether to make the colourbar scale logarithmic.
+
+        Returns:
+            None
+
+        """
         print '\tPlotting...'
 
         df = self._pmt_df
@@ -442,10 +566,18 @@ class EventDisplay():
             plt.savefig(fname, dpi=1400, bbox_inches='tight', pad_inches=0)
             print '\t\t%s saved!' % fname
 
-        return
-
     def _add_colourbar(self, fig, cmap_name, invert):
+        """Draws the event display, with all details. 
 
+        Args:
+            fig (matplotlib.Figure): The Matplotlib figure being used to draw the event display.
+            cmap_name (str): The name of the colourmap to use, this can be chosen from ones built-in to matplotlib or which have been interfaced from .csv in `_get_cmap`. 
+            invert (bool): Inverts the colours of the plot (from dark mode to light mode), defaults to False.
+
+        Returns:
+            None
+
+        """
         ax = fig.add_axes([0.85, 0.15, 0.005, 0.7], frameon=True, facecolor='w')
 
         cmap = self._get_cmap(cmap_name, invert)
@@ -454,10 +586,16 @@ class EventDisplay():
         cb1 = mpl.colorbar.ColorbarBase(ax, cmap=cmap, norm=norm)
         cb1.outline.set_visible(False)
 
-        return
-
     def _add_timing_plot(self, fig):
+        """Draws the time-of-flight corrected timing distribution onto the plot.
 
+        Args:
+            fig (matplotlib.Figure): The Matplotlib figure being used to draw the event display.
+
+        Returns:
+            None
+
+        """
         timing_data = np.concatenate(self._timing_data).ravel()
 
         ax = fig.add_axes([0.635, 0.17, 0.195, 0.18], facecolor='k')
@@ -476,11 +614,18 @@ class EventDisplay():
         ax.axvline(t1, color='w', ls='--', dashes=(5, 10), linewidth=0.1)
         ax.axvline(t2, color='w', ls='--', dashes=(5, 10), linewidth=0.1)
 
-
-        return
-
     def _add_text(self, ax, fit, correct):
+        """Add various information about the run to the top of the plot. 
 
+        Args:
+            ax (matplotlib.axes._subplots.AxesSubplot): The Matplotlib axis being used to draw the EventDisplay.
+            fit (bool): Whether to make a fit to the wall data in order to locate the signal.
+            correct (bool): Whether to apply corrections to the data, the types of correction to be applied are selected in `_do_corrections`.
+
+        Returns:
+            None
+
+        """
         ax.text(0.077, 0.97,
         '''
         LIVERPOOL LASER JULY'19
@@ -572,10 +717,20 @@ class EventDisplay():
                         self._injector.Tar.X*cm, self._injector.Tar.Y*cm, self._injector.Tar.Z*cm),
                 fontsize=4, horizontalalignment='right', verticalalignment='top', transform=ax.transAxes)
 
-        return
-
     def _setup_pyplot(self, invert, usetex=False):
+        """Sets up rcParams for the event display. 
 
+        Note:
+            Turning on usetex won't work due to the way the text is currently written out in `_add_text`.
+
+        Args:
+            invert (bool): Inverts the colours of the plot (from dark mode to light mode).
+            usetex (bool, optional): Uses LaTeX for displaying text, defaults to False. 
+
+        Returns:
+            None
+
+        """
         if usetex:
             mpl.rcParams['text.usetex'] = True
             mpl.rcParams['font.family'] = 'serif' 
@@ -628,10 +783,20 @@ class EventDisplay():
             mpl.rcParams['xtick.color'] = 'w'
             mpl.rcParams['ytick.color'] = 'w'
 
-        return
-
     def _rotate_detector(self, data, rot):
+        """Rotates the detector around the z-axis
 
+        Note:
+            This doesn't work it just fucks up the plot if rot is not 0.0.
+
+        Args:
+            data (pandas.DataFrame): The DataFrame of PMT information.
+            rot (float): The rotation angle in degrees. 
+
+        Returns:
+            pandas.DataFrame: The new rotated PMT information DataFrame.
+
+        """
         pmtx = data['pmtx'].values
         pmty = data['pmty'].values
 
@@ -641,7 +806,15 @@ class EventDisplay():
         return data
 
     def _segment_detector(self, data):
+        """Adds a few useful columns to the PMT information DataFrame (cylindrical coordinates, detector regions...).
 
+        Args:
+            data (pandas.DataFrame): The DataFrame of PMT information.
+
+        Returns:
+            pandas.DataFrame: The new PMT information DataFrame with additional columns.
+
+        """
         data['pmtphi'] = np.arctan2(data['pmtx'], data['pmty'])
         data['pmtr'] = np.sqrt(np.power(data['pmtx'], 2.) + np.power(data['pmty'], 2.))
         data['pmts'] = data['pmtr']*data['pmtphi']
@@ -656,6 +829,15 @@ class EventDisplay():
         return data
 
     def _draw_detector_frame(self, ax, draw_frame):
+        """Draws a frame around the detector regions.
+
+        Args:
+            ax (matplotlib.axes._subplots.AxesSubplot): The Matplotlib axis being used to draw the EventDisplay.
+            draw_frame (bool): Whether to draw the detector frame.
+        Returns:
+            pandas.DataFrame: The new PMT information DataFrame with additional columns.
+
+        """
 
         plt_barrel_width = sk_constants.WCIDCircumference
         plt_barrel_height = sk_constants.WCIDHeight
@@ -682,7 +864,18 @@ class EventDisplay():
         return collection, (barrel_c, top_c, bottom_c)
 
     def _draw_barrel_hits(self, ax, data, det_geom, cmap):
+        """Draws the hits on the barrel of the detector.
 
+        Args:
+            ax (matplotlib.axes._subplots.AxesSubplot): The Matplotlib axis being used to draw the EventDisplay.
+            data (pandas.DataFrame): The DataFrame of PMT information.
+            det_geom (tuple): Some storage of geometry variables for the detector plot.
+            cmap (matplotlib.cmap): The cmap object to be applied to the value on each PMT.
+
+        Returns:
+            None
+
+        """
         data_barrel = data.query('pmt_det_region == \'barrel\'')
 
         hits = []
@@ -702,10 +895,19 @@ class EventDisplay():
 
         ax.add_collection(hit_patches)
 
-        return
-
     def _draw_top_hits(self, ax, data, det_geom, cmap):
+        """Draws the hits on the top cap of the detector.
 
+        Args:
+            ax (matplotlib.axes._subplots.AxesSubplot): The Matplotlib axis being used to draw the EventDisplay.
+            data (pandas.DataFrame): The DataFrame of PMT information.
+            det_geom (tuple): Some storage of geometry variables for the detector plot.
+            cmap (matplotlib.cmap): The cmap object to be applied to the value on each PMT.
+
+        Returns:
+            None
+
+        """
         data_top = data.query('pmt_det_region == \'top\'')
 
         pmt_r = sk_constants.IDPMTRadius
@@ -724,10 +926,19 @@ class EventDisplay():
 
         ax.add_collection(hit_patches)
 
-        return 
-
     def _draw_bottom_hits(self, ax, data, det_geom, cmap):
+        """Draws the hits on the bottom cap of the detector.
 
+        Args:
+            ax (matplotlib.axes._subplots.AxesSubplot): The Matplotlib axis being used to draw the EventDisplay.
+            data (pandas.DataFrame): The DataFrame of PMT information.
+            det_geom (tuple): Some storage of geometry variables for the detector plot.
+            cmap (matplotlib.cmap): The cmap object to be applied to the value on each PMT.
+
+        Returns:
+            None
+
+        """
         data_bottom = data.query('pmt_det_region == \'bottom\'')
         pmt_r = sk_constants.IDPMTRadius
         hits = []
@@ -746,10 +957,17 @@ class EventDisplay():
 
         ax.add_collection(hit_patches)
 
-        return 
-
     def _get_cmap(self, cmap_name, invert):
+        """Loads the colourmap to be applied to the value at each PMT.
 
+        Args:
+            cmap_name (str) The name of the cmap to load.
+            invert (bool) Whether to reverse the cmap colours.
+
+        Returns:
+            mpl.colors.Colormap: The colourmap to be applied.
+
+        """
         if cmap_name is not 'kindlmann' and cmap_name is not 'kindlmannext':
 
             cmap = mpl.cm.get_cmap(cmap_name)
@@ -770,7 +988,22 @@ class EventDisplay():
         return cmap
 
     def _draw_hits(self, ax, data, det_geom, cmap_name, invert, logz, norm_det=True, mask_injector=True):
+        """Draws the detector hits.
 
+        Args:
+
+            ax (matplotlib.axes._subplots.AxesSubplot): The Matplotlib axis being used to draw the EventDisplay.
+            data (pandas.DataFrame): The DataFrame of PMT information.
+            det_geom (tuple): Some storage of geometry variables for the detector plot.
+            cmap_name (str) The name of the cmap to load.
+            invert (bool) Whether to reverse the cmap colours.
+            logz (bool): Whether to make the colourbar scale logarithmic.
+            norm_det (bool, optional): If True the detector is normalised as a whole, if False each region is normalised individually, defaults to True.
+            mask_injector (bool, optional): If True PMTs immediately around the injector position are removed to avoid saturation, defaults to True
+        Returns:
+            None
+
+        """
         if mask_injector:
 
             mask_r = 0.707*3
@@ -821,5 +1054,3 @@ class EventDisplay():
         self._draw_barrel_hits(ax, data, det_geom, cmap)
         self._draw_top_hits(ax, data, det_geom, cmap)
         self._draw_bottom_hits(ax, data, det_geom, cmap)
-
-        return
