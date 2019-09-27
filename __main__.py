@@ -27,7 +27,11 @@ def run(args):
 
     chain, run = load_data(args)
 
-    EventDisplay(chain, run, wvar='occ', tof_cut_override=RunInfo.Runs[run].time_sel, fit=False)
+    EventDisplay(chain, run, wvar='occ', tof_cut_override=RunInfo.Runs[run].time_sel, fit=False, walltime_cut=False, correct=True)
+    EventDisplay(chain, run, wvar='charge', tof_cut_override=RunInfo.Runs[run].time_sel, fit=False, walltime_cut=False, correct=True)
+    #EventDisplay(chain, run, wvar='occ', tof_cut_override=RunInfo.Runs[run].time_sel, fit=True, walltime_cut=False, logz=True)
+    #EventDisplay(chain, run, wvar='charge', tof_cut_override=RunInfo.Runs[run].time_sel, fit=True, walltime_cut=False)
+    #EventDisplay(chain, run, wvar='charge', tof_cut_override=RunInfo.Runs[run].time_sel, fit=True, walltime_cut=False, logz=True)
 
     return
 

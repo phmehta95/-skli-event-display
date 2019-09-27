@@ -35,7 +35,7 @@ class EventDisplay():
 
         self._plot(cmap, fit, rot, invert, wvar, draw_frame, draw_timing, correct, logz)
 
-    def _do_corrections(self, gain=False, solid_angle=False, angular=False, attenuation=False):
+    def _do_corrections(self, gain=False, solid_angle=True, angular=False, attenuation=False):
 
         self._pmt_df['tot_cor'] = 1.0
 
@@ -86,10 +86,9 @@ class EventDisplay():
 
         self._pmt_df['tar_inj_vec_mag'] = np.sqrt(np.square(self._pmt_df['tar_inj_vec_x']) + np.square(self._pmt_df['tar_inj_vec_y']) + np.square(self._pmt_df['tar_inj_vec_z']))
 
-
         self._pmt_df['theta_dir'] = np.arccos((self._pmt_df['tar_inj_vec_x']*self._pmt_df['pmt_inj_vec_x'] + self._pmt_df['tar_inj_vec_y']*self._pmt_df['pmt_inj_vec_y'] + self._pmt_df['tar_inj_vec_z']*self._pmt_df['pmt_inj_vec_z'])/(self._pmt_df['pmt_inj_vec_mag']*self._pmt_df['tar_inj_vec_mag']))
 
-        plt.show(block=True)
+        #plt.show(block=True)
 
         return
 
@@ -131,7 +130,7 @@ class EventDisplay():
 
             tof_time_exp = '(time_vec - 1.0e9*sqrt(pow(pmtx_vec/100. - %s/100., 2)+pow(pmty_vec/100. - %s/100., 2)+pow(pmtz_vec/100. - %s/100., 2))/%s - (Sum$(mon_time_vec*(mon_cable_vec==%s))/Sum$((mon_cable_vec==%s))))' % (self._injector.Pos.X, self._injector.Pos.Y, self._injector.Pos.Z, c_light*1e6/1.333, self._monitor, self._monitor)
         else:
-            tof_time_exp = '(time_vec - 1.0e9*sqrt(pow(pmtx_vec/100. - %s/100., 2)+pow(pmty_vec/100. - %s/100., 2)+pow(pmtz_vec/100. - %s/100., 2))/%s)' % (injector.Pos.X, injector.Pos.Y, injector.Pos.Z, c_light*1e6/1.333)
+            tof_time_exp = '(time_vec - 1.0e9*sqrt(pow(pmtx_vec/100. - %s/100., 2)+pow(pmty_vec/100. - %s/100., 2)+pow(pmtz_vec/100. - %s/100., 2))/%s)' % (self._injector.Pos.X, self._injector.Pos.Y, self._injector.Pos.Z, c_light*1e6/1.333)
 
         return tof_time_exp
 
@@ -330,10 +329,10 @@ class EventDisplay():
 
             gaus = ROOT.TF2("f2","[0]*TMath::Gaus(x,[1],[2])*TMath::Gaus(y,[3],[4])", target_pos_s - fwhm_r*7.0, target_pos_s+7.0*fwhm_r, target_pos.Z*cm - 7.0*fwhm_r, target_pos.Z*cm + 7.*fwhm_r)
             sigma = 1.
-            gaus.SetParameters(1e4,target_pos_s +3.,sigma,target_pos.Z*cm,sigma)
-            gaus.SetParLimits(1, target_pos_s - 6.*fwhm_r, target_pos_s+6.*fwhm_r)
+            gaus.SetParameters(1e4,target_pos_s,sigma,target_pos.Z*cm,sigma)
+            gaus.SetParLimits(1, target_pos_s - 4.*fwhm_r, target_pos_s+4.*fwhm_r)
             gaus.SetParLimits(2, 0.0, 3.0)
-            gaus.SetParLimits(3, target_pos.Z*cm - 6.*fwhm_r, target_pos.Z*cm + 6.*fwhm_r)
+            gaus.SetParLimits(3, target_pos.Z*cm - 4.*fwhm_r, target_pos.Z*cm + 4.*fwhm_r)
             gaus.SetParLimits(4, 0.0, 3.0)
 
         self._barrel_root_hist.Fit(gaus, 'QRSMN')
@@ -387,7 +386,7 @@ class EventDisplay():
 
             fwhm_circle = mpl.patches.Circle((target_pos_s, target_pos.Z*cm), radius=fwhm_r, fill=False, edgecolor='cyan', linestyle='--', linewidth=0.5, alpha=0.3)
             #full_circle = mpl.patches.Circle((target_pos_s, target_pos.Z*cm), radius=full_r, fill=False, edgecolor='cyan', linewidth=0.5, alpha=0.3)
-            ax.add_artist(fwhm_circle)
+            #ax.add_artist(fwhm_circle)
             #ax.add_artist(full_circle)
 
         if fit and source != 'diffuser':
@@ -438,7 +437,8 @@ class EventDisplay():
                 fname = '%s/%s_%s_%s_log%s' % (self._diffuser, Injector.tostr(self._injector), self._diffuser, wvar, ext)
             else:
                 fname = '%s/%s_%s_%s%s' % (self._diffuser, Injector.tostr(self._injector), self._diffuser, wvar, ext)
-            os.makedirs(fname)
+            #os.makedirs(os.path.abspath(os.path.join(fname, os.pardir)))
+
             plt.savefig(fname, dpi=1400, bbox_inches='tight', pad_inches=0)
             print '\t\t%s saved!' % fname
 
@@ -467,7 +467,7 @@ class EventDisplay():
         
         #ax.set_ylim(0.0, 0.2e6)
         ax.ticklabel_format(axis='y', style='sci', scilimits=(0,0))
-        #ax.set_ylim(0.0, 1e5)
+        #ax.set_ylim(0.0, 0.1e6)
         #ax.set_xlim(1.025e3, 1.2e3)
         ax.set_xlim(0, 1200)
 
