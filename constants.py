@@ -24,15 +24,12 @@ class RunPeriod:
     KOREAN_LASER = 2
     LIVERPOOL_LASER = 3
 
-    _enums = {'top deployment': TOP_DEPLOYMENT,
-                'korean laser': KOREAN_LASER,
-                'liverpool laser': LIVERPOOL_LASER,
-    }    
-
     _names = {TOP_DEPLOYMENT: 'top deployment',
                 KOREAN_LASER: 'korean laser',
                 LIVERPOOL_LASER: 'liverpool laser',
     }    
+
+    _enums = dict((v, k) for k,v in _names.items())
 
     _dates = {TOP_DEPLOYMENT: 'Jan. \'18',
                 KOREAN_LASER: 'Feb. \'19',
@@ -64,6 +61,8 @@ class Source:
               MONITOR:"monitor",
     }
 
+    _enums = dict((v, k) for k,v in _names.items())
+
     ALL = [BARE, COLLIMATOR, DIFFUSER, MONITOR]
 
     @classmethod
@@ -92,6 +91,8 @@ class Injector:
                 B4: "B4",
                 B5: "B5",
                 BOTTOM: "BOTTOM"}
+
+    _enums = dict((v, k) for k,v in _names.items())
 
     ALL_BARREL = [B1, B2, B3, B4, B5]
     ALL = [OLD_TOP, B1, B2, B3, B4, B5]
