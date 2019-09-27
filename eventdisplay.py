@@ -16,9 +16,10 @@ from constants import *
 
 class EventDisplay():
     
-    def __init__(self, tree, run, wvar='occ', fit=True, norm='area', rot=0., cmap='plasma', invert=False, draw_frame=False, tof_cut=True, event_id_cut=True, draw_timing=True, correct=False, logz=False, tof_cut_override=None):
+    def __init__(self, tree, run, wvar='occupancy', fit=True, norm='area', rot=0., cmap='plasma', invert=False, draw_frame=False, tof_cut=True, event_id_cut=True, draw_timing=True, correct=False, logz=False, tof_cut_override=None):
         """Generates an Super-Kamiokande event display in Matplotlib from a ROOT tree.
 
+            
         Note:
             We recommend perceptually uniform colourmaps for displaying physics data for clarity, such viridis, inferno, plasma, magma, afmhot, kindlmann and kindlmannext.
 
@@ -48,18 +49,32 @@ class EventDisplay():
         self._injector = RunInfo.Runs[run].injector #:namedtuple: The injector position and target position contained within a namedtuple.
         self._monitor = RunInfo.Runs[run].monitor #:monitor: The ID of the monitor available for this run.
 
-        print '\nPreparing run %s (%s %s) event display...' % (self._run, Injector.tostr(self._injector), self._diffuser)
+        print '\nPreparing run %s (%s %s) %s event display...' % (self._run, Injector.tostr(self._injector), self._diffuser, wvar)
 
-        #:pandas:DataFrame: A dataframe storing information for every ID-PMT integrated over the run.
-        self._pmt_df = self._build_pmt_df(tree, wvar, fit, tof_cut, event_id_cut, draw_timing, tof_cut_override)
+        # A dataframe storing information for every ID-PMT integrated over the run.
+        self._pmt_df = self._build_pmt_df(tree=tree, 
+                                            wvar=wvar, 
+                                            fit=fit, 
+                                            tof_cut=tof_cut, 
+                                            event_id_cut=event_id_cut, 
+                                            draw_timing=draw_timing, 
+                                            tof_cut_override=tof_cut_override)
 
-        if fit and self._diffuser is not 'diffuser':
-            self._loc_signal()
+        if fit and self._diffuser is not 'diffuser': 
+            self._loc_signal() # Attempt to find the wall signal with a fit.
 
-        if correct:
-            self._do_corrections()
+        if correct: 
+            self._do_corrections() # Apply some corrections.
 
-        self._plot(cmap, fit, rot, invert, wvar, draw_frame, draw_timing, correct, logz)
+        self._plot(cmap=cmap, 
+                    fit=fit, 
+                    rot=rot, 
+                    invert=invert, 
+                    wvar=wvar, 
+                    draw_frame=draw_frame, 
+                    draw_timing=draw_timing, 
+                    correct=correct, 
+                    logz=logz) # Draw the plot.
 
     def _do_corrections(self, gain=False, solid_angle=True, angular=False, attenuation=False):
         """Applies selected corrections to the PMT DataFrame.
@@ -95,7 +110,7 @@ class EventDisplay():
 
         correction_str = ''
 
-        for correction in corrections:
+        for correction in corrections: # Build string to indicate corrections on plot.
 
             if corrections[correction]:
 
@@ -104,7 +119,7 @@ class EventDisplay():
 
         self._corrections = correction_str
 
-    def _do_gain_correction(self):#TODO
+    def _do_gain_correction(self):
         """Applies the gain correction to the PMT DataFrame.
 
         Note:
@@ -130,15 +145,15 @@ class EventDisplay():
         self._pmt_df['pmt_inj_vec_y'] = self._pmt_df['pmty'] - injector.Y*cm
         self._pmt_df['pmt_inj_vec_z'] = self._pmt_df['pmtz'] - injector.Z*cm
 
-        self._pmt_df['pmt_inj_vec_mag'] = np.sqrt(np.square(self._pmt_df['pmt_inj_vec_x']) + np.square(self._pmt_df['pmt_inj_vec_y']) + np.square(self._pmt_df['pmt_inj_vec_z']))
+        self._pmt_df['pmt_inj_vec_mag'] = np.sqrt(np.square(self._pmt_df['pmt_inj_vec_x']) + np.square(self._pmt_df['pmt_inj_vec_y']) + np.square(self._pmt_df['pmt_inj_vec_z'])) # Distance from PMT to injector.
 
         self._pmt_df['tar_inj_vec_x'] = (target.X - injector.X)*cm
         self._pmt_df['tar_inj_vec_y'] = (target.Y - injector.Y)*cm
         self._pmt_df['tar_inj_vec_z'] = (target.Z - injector.Z)*cm
 
-        self._pmt_df['tar_inj_vec_mag'] = np.sqrt(np.square(self._pmt_df['tar_inj_vec_x']) + np.square(self._pmt_df['tar_inj_vec_y']) + np.square(self._pmt_df['tar_inj_vec_z']))
+        self._pmt_df['tar_inj_vec_mag'] = np.sqrt(np.square(self._pmt_df['tar_inj_vec_x']) + np.square(self._pmt_df['tar_inj_vec_y']) + np.square(self._pmt_df['tar_inj_vec_z'])) # Distance from target to injector.
 
-        self._pmt_df['theta_dir'] = np.arccos((self._pmt_df['tar_inj_vec_x']*self._pmt_df['pmt_inj_vec_x'] + self._pmt_df['tar_inj_vec_y']*self._pmt_df['pmt_inj_vec_y'] + self._pmt_df['tar_inj_vec_z']*self._pmt_df['pmt_inj_vec_z'])/(self._pmt_df['pmt_inj_vec_mag']*self._pmt_df['tar_inj_vec_mag']))
+        self._pmt_df['theta_dir'] = np.arccos((self._pmt_df['tar_inj_vec_x']*self._pmt_df['pmt_inj_vec_x'] + self._pmt_df['tar_inj_vec_y']*self._pmt_df['pmt_inj_vec_y'] + self._pmt_df['tar_inj_vec_z']*self._pmt_df['pmt_inj_vec_z'])/(self._pmt_df['pmt_inj_vec_mag']*self._pmt_df['tar_inj_vec_mag'])) # Angle subtending vector from injector position to PMT position and vector from injector position to target position.
 
     def _do_solid_angle_correction(self):
         """Applies the solid angle correction to the PMT DataFrame.
@@ -196,10 +211,10 @@ class EventDisplay():
 
         """
 
-        if monitor:
+        if monitor: # Use monitor information.
 
             tof_time_exp = '(time_vec - 1.0e9*sqrt(pow(pmtx_vec/100. - %s/100., 2)+pow(pmty_vec/100. - %s/100., 2)+pow(pmtz_vec/100. - %s/100., 2))/%s - (Sum$(mon_time_vec*(mon_cable_vec==%s))/Sum$((mon_cable_vec==%s))))' % (self._injector.Pos.X, self._injector.Pos.Y, self._injector.Pos.Z, c_light*1e6/1.333, self._monitor, self._monitor)
-        else:
+        else: # Exclude monitor information.
             tof_time_exp = '(time_vec - 1.0e9*sqrt(pow(pmtx_vec/100. - %s/100., 2)+pow(pmty_vec/100. - %s/100., 2)+pow(pmtz_vec/100. - %s/100., 2))/%s)' % (self._injector.Pos.X, self._injector.Pos.Y, self._injector.Pos.Z, c_light*1e6/1.333)
 
         return tof_time_exp
@@ -285,7 +300,7 @@ class EventDisplay():
 
         Args:
             tree (ROOT:TTree/ROOT:TChain): The tree or chain to read data from.
-            wvar (str, optional): The plot type to generate, choices are `occ` (occupancy) or `charge` (charge weighted), defaults to `occ`.
+            wvar (str, optional): The plot type to generate, choices are `occupancy` (occupancy) or `charge` (charge weighted), defaults to `occupancy`.
             fit (bool, optional): Whether to make a fit to the wall data in order to locate the signal, defaults to True, overriden to False later if the source is a diffuser.
             tof_cut (bool, optional): Whether to cut on the time-of-flight corrected timing distribution, defaults to True.
             event_id_cut (bool, optional): Whether to cut on the time-of-flight corrected timing distribution, defaults to True.
@@ -299,14 +314,14 @@ class EventDisplay():
 
         print '\tBinning...'
 
-        map_df = pd.read_csv('%s/tables/pmt_id_pos_map.csv' % os.path.dirname(__file__))
+        map_df = pd.read_csv('%s/tables/pmt_id_pos_map.csv' % os.path.dirname(__file__)) # Reads a file which maps PMT ID to position in the tank.
 
         x_min = 0
-        x_max = 11147
+        x_max = 11147 
 
-        hist = ROOT.TH1F('hist', 'hist', x_max, x_min-0.5, x_max-0.5)
+        hist = ROOT.TH1F('hist', 'hist', x_max, x_min-0.5, x_max-0.5) # Init histogram of PMT ID.
 
-        if wvar is 'occ':
+        if wvar is 'occupancy':
             wstr = '1/Entries$'
             self._plot_name = 'OCCUPANCY'
         elif wvar is 'charge':
@@ -326,18 +341,13 @@ class EventDisplay():
             event_id_sel_exp = self._get_event_id_cut_exp()
             varexp = '(%s)*(%s)*(%s)' % (wstr, time_str, event_id_sel_exp)
 
-        tree.Draw('cable_vec>>hist', varexp, 'goff')
+        tree.Draw('cable_vec>>hist', varexp, 'goff') # Fill PMT ID histogram.
 
-        if draw_timing:
-
-            #self._timing_data = root_numpy.tree2array(tree, "(time_vec - 1.0e9*sqrt(pow(pmtx_vec/100. - %s/100., 2)+pow(pmty_vec/100. - %s/100., 2)+pow(pmtz_vec/100. - %s/100., 2))/%s)" % (self._injector.Pos.X, self._injector.Pos.Y, self._injector.Pos.Z, c_light*1e6/1.333))
-
-
-            #self._timing_data = root_numpy.tree2array(tree, "(time_vec - 1.0e9*sqrt(pow(pmtx_vec/100. - %s/100., 2)+pow(pmty_vec/100. - %s/100., 2)+pow(pmtz_vec/100. - %s/100., 2))/%s - (Sum$(mon_time_vec*(mon_cable_vec==11256))/Sum$((mon_cable_vec==11256))))" % (self._injector.Pos.X, self._injector.Pos.Y, self._injector.Pos.Z, c_light*1e6/1.333))            
+        if draw_timing: # Generate the TOF corrected timing histogram.
 
             self._timing_data = root_numpy.tree2array(tree, '(%s)*(%s)' % (self._get_tof_time_exp(self._monitor), self._get_event_id_cut_exp()))
 
-        if fit:
+        if fit: # Generate a ROOT histogram of wall hits.
 
             hist_barrel = ROOT.TH2F('barrel', 'barrel', sk_constants.WCBarrelNumPMTHorizontal, -sk_constants.WCIDCircumference/2.0, sk_constants.WCIDCircumference/2.0, int(sk_constants.WCBarrelNRings*sk_constants.WCPMTperCellVertical), -sk_constants.WCIDHeight/2.0, sk_constants.WCIDHeight/2.0)
 
@@ -347,7 +357,7 @@ class EventDisplay():
 
         self._no_events = tree.GetEntries()
 
-        for i, event in enumerate(tree):
+        for i, event in enumerate(tree): # Get run start and end timestamps.
 
             if i == 0: # Gets first event
                 year_start = event.year
@@ -370,17 +380,17 @@ class EventDisplay():
         self._run_start_tree = datetime.datetime(year_start, month_start, day_start, hour_start, minute_start, second_start, millisecond_start)
         self._run_end_tree = datetime.datetime(year_end, month_end, day_end, hour_end, minute_end, second_end, millisecond_end)
 
-        array, edges = root_numpy.hist2array(hist, return_edges=True)
+        array, edges = root_numpy.hist2array(hist, return_edges=True) # Convert PMT ID histogram to numpy array.
 
-        data = pd.DataFrame({'val': array, 'pmtid': (np.array(edges[0][0:-1])+0.5).astype(int)})
+        data = pd.DataFrame({'val': array, 'pmtid': (np.array(edges[0][0:-1])+0.5).astype(int)}) # Fill DataFrame with PMT ID and value of bin. 
 
-        merged_df = pd.merge(data, map_df, on='pmtid')
+        merged_df = pd.merge(data, map_df, on='pmtid') # Match PMT positions to PMT ID.
 
         merged_df['pmtx'] = merged_df['pmtx']*cm
         merged_df['pmty'] = merged_df['pmty']*cm
         merged_df['pmtz'] = merged_df['pmtz']*cm
 
-        merged_df = self._segment_detector(merged_df)
+        merged_df = self._segment_detector(merged_df) # Add some additional columns to DataFrame.
 
         return merged_df
 
@@ -400,22 +410,23 @@ class EventDisplay():
 
         barrel_hist = self._barrel_root_hist
         source = self._diffuser
+
         if source is 'barefibre':
 
-            fwhm_theta_air = 22.80075328628417
-            beam_init_r = 0.1*mm
+            fwhm_theta_air = 22.80075328628417 # The FWHM half-opening angle of the bare fibre as measured in air.
+            beam_init_r = 0.1*mm # Assume the beam is initially as large as the core radius of the fibre.
 
         elif source is 'collimator':
 
-            fwhm_theta_air = 1.80
-            beam_init_r = 0.9*mm
+            fwhm_theta_air = 1.80 # The FWHM half-opening angle of the collimator as measured in air.
+            beam_init_r = 0.9*mm # Assume the beam is initially as large as the secondary aperture of the collimator.
 
         fwhm_r = beam_init_r + beam_l*np.tan(np.radians(fwhm_theta_air*1.0003/1.333))
 
         target_pos = self._injector.Tar
         target_pos_s = np.arctan2(target_pos.X*cm, target_pos.Y*cm)*((target_pos.X*cm)**2 + (target_pos.Y*cm)**2)**0.5
 
-        if source is 'barefibre':
+        if source is 'barefibre': # Do fit to a bare fibre.
 
             gaus = ROOT.TF2("f2","[0]*TMath::Gaus(x,[1],[2])*TMath::Gaus(y,[3],[4])", target_pos_s - fwhm_r, target_pos_s+fwhm_r, target_pos.Z*cm - fwhm_r, target_pos.Z*cm + fwhm_r)
             sigma = 10.0
@@ -425,7 +436,7 @@ class EventDisplay():
             gaus.SetParLimits(3, target_pos.Z*cm - 5.*fwhm_r, target_pos.Z*cm + 5.*fwhm_r)
             gaus.SetParLimits(4, 0.0, 50.0)
 
-        elif source is 'collimator':
+        elif source is 'collimator': # Do fit to a collimator.
 
             gaus = ROOT.TF2("f2","[0]*TMath::Gaus(x,[1],[2])*TMath::Gaus(y,[3],[4])", target_pos_s - fwhm_r*7.0, target_pos_s+7.0*fwhm_r, target_pos.Z*cm - 7.0*fwhm_r, target_pos.Z*cm + 7.*fwhm_r)
             sigma = 1.
@@ -444,11 +455,9 @@ class EventDisplay():
 
         target_pos_r = ((target_pos.X*cm)**2 + (target_pos.Y*cm)**2)**0.5
 
-        self._signal_cart = (target_pos_r*np.sin(self._signal[0]/target_pos_r), target_pos_r*np.cos(self._signal[0]/target_pos_r), self._signal[1])
+        self._signal_cart = (target_pos_r*np.sin(self._signal[0]/target_pos_r), target_pos_r*np.cos(self._signal[0]/target_pos_r), self._signal[1]) # Signal position in the tank in cartesian coordinates.
 
-        self._signal_err_cart = (abs(s_err*np.cos(self._signal[0]/target_pos_r)), abs(s_err*np.sin(self._signal[0]/target_pos_r)), z_err)
-
-        return
+        self._signal_err_cart = (abs(s_err*np.cos(self._signal[0]/target_pos_r)), abs(s_err*np.sin(self._signal[0]/target_pos_r)), z_err) # Signal position error in the tank in cartesian coordinates.
 
     def _draw_inj_tar(self, ax, fit, det_geom):
         """Draws the injector, target, signal positions onto the plot. 
@@ -478,7 +487,7 @@ class EventDisplay():
         ax.plot(injector_pos.X*cm+top_c[0], injector_pos.Y*cm+top_c[1], 'wx', markersize=3, alpha=0.35)
         ax.plot(injector_pos.X*cm+bottom_c[0], injector_pos.Y*cm+bottom_c[1], 'wx', markersize=3, alpha=0.35)
 
-        if source == 'barefibre' or source == 'collimator':
+        if source == 'barefibre' or source == 'collimator':  # Draw circle representing the expected FWHM angle of either the bare fibre or collimator.
 
             if source is 'barefibre':
 
@@ -495,11 +504,12 @@ class EventDisplay():
             #full_r = beam_init_r + beam_l*np.tan(np.radians(full_theta_air*1.0003/1.333))
 
             fwhm_circle = mpl.patches.Circle((target_pos_s, target_pos.Z*cm), radius=fwhm_r, fill=False, edgecolor='cyan', linestyle='--', linewidth=0.5, alpha=0.3)
+
             #full_circle = mpl.patches.Circle((target_pos_s, target_pos.Z*cm), radius=full_r, fill=False, edgecolor='cyan', linewidth=0.5, alpha=0.3)
             #ax.add_artist(fwhm_circle)
             #ax.add_artist(full_circle)
 
-        if fit and source != 'diffuser':
+        if fit and source != 'diffuser': # Draw the fit results onto the plot.
 
             s_sig, z_sig = self._signal
             x_sig, y_sig, z_sig = self._signal_cart
@@ -513,7 +523,7 @@ class EventDisplay():
         ax.plot(target_pos.X*cm+bottom_c[0], target_pos.Y*cm+bottom_c[1], 'bx', markersize=3, alpha=0.5)
         ax.legend(loc=(0.795, 0.670), markerscale=0.7)._legend_box.align='right'
 
-    def _plot(self, cmap, fit, rot, invert, wvar, draw_frame, draw_timing, correct, logz):
+    def _plot(self, cmap, fit, rot, invert, wvar, draw_frame, draw_timing, correct, logz, save_dir=os.getcwd()):
         """Draws the event display, with all details. 
 
         Args:
@@ -521,7 +531,7 @@ class EventDisplay():
             fit (bool): Whether to make a fit to the wall data in order to locate the signal.
             rot (float): The angle to rotate the detector around the z-axis, doesn't work properly.
             invert (bool): Inverts the colours of the plot (from dark mode to light mode).
-            wvar (str): The plot type to generate, choices are `occ` (occupancy) or `charge` (charge weighted).
+            wvar (str): The plot type to generate, choices are `occupancy` (occupancy) or `charge` (charge weighted).
             draw_frame (bool): Draws a detector frame around the detector regions.
             draw_timing (bool): Whether to draw the time-of-flight corrected timing distribution in lower right of the event display.
             correct (bool): Whether to apply corrections to the data, the types of correction to be applied are selected in `_do_corrections`.
@@ -535,19 +545,20 @@ class EventDisplay():
 
         df = self._pmt_df
 
-        self._setup_pyplot(invert, usetex=False)
+        self._setup_pyplot(invert, usetex=False) # Setup matplotlib rcParams for event display plot.
+
         if int(rot) is not 0:
             df = self._rotate_detector(df, rot)
 
         fig, ax = plt.subplots(figsize=(5.2, 4.8))
 
-        det_frame, det_geom = self._draw_detector_frame(ax, draw_frame)
-        self._draw_hits(ax, df, det_geom, cmap, invert, logz)
-        self._draw_inj_tar(ax, fit, det_geom)
-        self._add_text(ax, fit, correct)
+        det_frame, det_geom = self._draw_detector_frame(ax, draw_frame) # Draw frames around each detector region.
+        self._draw_hits(ax, df, det_geom, cmap, invert, logz) # Draw the hits.
+        self._draw_inj_tar(ax, fit, det_geom) # Draw markers for the injector, target and signal positions.
+        self._add_text(ax, fit, correct) # Add run information to the top of the plot.
         if draw_timing:
-            self._add_timing_plot(fig)
-        self._add_colourbar(fig, cmap, invert)
+            self._add_timing_plot(fig) # Add the TOF corrected timing distribution to the plot.
+        self._add_colourbar(fig, cmap, invert) # Add the colourbar.
 
         plt_barrel_width = sk_constants.WCIDCircumference
         plt_barrel_height = sk_constants.WCIDHeight
@@ -561,10 +572,14 @@ class EventDisplay():
                 fname = '%s/%s_%s_%s_log%s' % (self._diffuser, Injector.tostr(self._injector), self._diffuser, wvar, ext)
             else:
                 fname = '%s/%s_%s_%s%s' % (self._diffuser, Injector.tostr(self._injector), self._diffuser, wvar, ext)
-            #os.makedirs(os.path.abspath(os.path.join(fname, os.pardir)))
+            
+            par_dir = os.path.abspath(os.path.join(save_dir, fname, '..'))
+
+            if not os.path.exists(par_dir):
+                os.makedirs(par_dir)
 
             plt.savefig(fname, dpi=1400, bbox_inches='tight', pad_inches=0)
-            print '\t\t%s saved!' % fname
+            print '\t\t%s saved!' % os.path.join(save_dir, fname)
 
     def _add_colourbar(self, fig, cmap_name, invert):
         """Draws the event display, with all details. 

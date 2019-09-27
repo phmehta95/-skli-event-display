@@ -47,8 +47,8 @@ def run(args):
     sel_chains = load_data(args)
 
     for run, chain in sel_chains.items():
-        EventDisplay(chain, run, wvar='occ', tof_cut_override=RunInfo.Runs[run].time_sel, fit=False, event_id_cut=False, correct=False)
-        EventDisplay(chain, run, wvar='charge', tof_cut_override=RunInfo.Runs[run].time_sel, fit=False, event_id_cut=False, correct=True)
+        EventDisplay(chain, run, wvar='occupancy', tof_cut_override=RunInfo.Runs[run].time_sel, fit=False, event_id_cut=False)
+        EventDisplay(chain, run, wvar='charge', tof_cut_override=RunInfo.Runs[run].time_sel, fit=False, event_id_cut=False)
 
 def main():
     """Parse args and run event display generation.
