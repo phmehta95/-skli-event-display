@@ -21,8 +21,8 @@ def parseargs():
     """
     parser = ArgumentParser()
     parser.add_argument('--flist', '-i', nargs="+")
-    parser.add_argument('--source', choices=Source._enums.keys(), default=Source._names[Source.COLLIMATOR])
-    parser.add_argument('--injector', choices=Injector._enums.keys(), default=Injector._names[Injector.B1])
+    parser.add_argument('--source', choices=Source._enums.keys(), default=Source._names[Source.DIFFUSER])
+    parser.add_argument('--injector', choices=Injector._enums.keys(), default=Injector._names[Injector.B5])
     parser.add_argument('--run-period', choices=RunPeriod._enums.keys(), default=RunPeriod._names[RunPeriod.LIVERPOOL_LASER])
     parser.add_argument('--run', type=int, default=None, nargs='+')
     parser.add_argument('-b', '--batch', action='store_true', default=False)
@@ -77,7 +77,7 @@ def load_data(args):
         int: The ID of the run selected.
     """
 
-    print '\nLoading data...'
+    print ('\nLoading data...')
 
     if args.run is None:
         run = find_requested_runs(run_period=args.run_period, injector=args.injector, source=args.source)
@@ -101,11 +101,11 @@ def get_runs(flist, *runs):
     """
 
     run_file_map = OrderedDict()
-    print '\tGetting runs...'
+    print ('\tGetting runs...')
     for run in runs:
         for file in flist:
             if str(run) in str(file):
-                print '\t\tFound run %s: %s' % (run, file)
+                print ('\t\tFound run %s: %s' % (run, file))
                 run_file_map[run] = file
 
     return run_file_map
@@ -124,13 +124,13 @@ def find_requested_runs(run_period, injector, source):
 
     runs = []
 
-    print 'Finding runs during run period \'%s\' with %s %s...' % (run_period, injector, source)
+    print ('Finding runs during run period \'%s\' with %s %s...' % (run_period, injector, source))
 
     for run_id, info in RunInfo.Runs.items():
         if RunPeriod.tostr(info.runperiod) == run_period and Injector.tostr(info.injector) == injector and Source.tostr(info.source) == source:
             runs.append(info.runnum)
 
-    print '\tFound run(s) %s.' % ','.join(map(str, runs))
+    print ('\tFound run(s) %s.' % ','.join(map(str, runs)))
 
     return runs
 
@@ -189,7 +189,7 @@ def profile_func(func, args=[], kwargs={}, num=20):
     prof = run_profiler(func, *args, **kwargs)
     ps = pstats.Stats(prof)
     for key in ["time", "cumulative"]:
-        print "--- top {} sorted by {}".format(num, key)
+        print ("--- top {} sorted by {}".format(num, key))
         ps.sort_stats(key).print_stats(num)
 
 if __name__ == "__main__":

@@ -111,58 +111,165 @@ class RunInfo:
 
     Runs = {r.runnum:r for r in [
         # Tuesday 23rd January 2018
-        RI(RunPeriod.TOP_DEPLOYMENT, 77480, Injector.OLD_TOP, Source.BARE, 5, False, top_deployment_mon_id, None),
-        RI(RunPeriod.TOP_DEPLOYMENT, 77481, Injector.OLD_TOP, Source.BARE, 0, False, top_deployment_mon_id, None),
-        RI(RunPeriod.TOP_DEPLOYMENT, 77483, Injector.OLD_TOP, Source.BARE, 6, True, top_deployment_mon_id, None),
-        RI(RunPeriod.TOP_DEPLOYMENT, 77484, Injector.OLD_TOP, Source.BARE, 7, True, top_deployment_mon_id, None),
-        RI(RunPeriod.TOP_DEPLOYMENT, 77485, Injector.OLD_TOP, Source.BARE, 5, True, top_deployment_mon_id, None),
-        RI(RunPeriod.TOP_DEPLOYMENT, 77486, Injector.OLD_TOP, Source.BARE, 8, True, top_deployment_mon_id, None),
-        RI(RunPeriod.TOP_DEPLOYMENT, 77488, Injector.OLD_TOP, Source.COLLIMATOR, 5, True, top_deployment_mon_id, None),
-        RI(RunPeriod.TOP_DEPLOYMENT, 77489, Injector.OLD_TOP, Source.COLLIMATOR, 6, True, top_deployment_mon_id, None),
-        RI(RunPeriod.TOP_DEPLOYMENT, 77490, Injector.OLD_TOP, Source.COLLIMATOR, 7, True, top_deployment_mon_id, None),
+#        RI(RunPeriod.TOP_DEPLOYMENT, 77480, Injector.OLD_TOP, Source.BARE, 5, False, top_deployment_mon_id, None),
+#        RI(RunPeriod.TOP_DEPLOYMENT, 77481, Injector.OLD_TOP, Source.BARE, 0, False, top_deployment_mon_id, None),
+#        RI(RunPeriod.TOP_DEPLOYMENT, 77483, Injector.OLD_TOP, Source.BARE, 6, True, top_deployment_mon_id, None),
+#        RI(RunPeriod.TOP_DEPLOYMENT, 77484, Injector.OLD_TOP, Source.BARE, 7, True, top_deployment_mon_id, None),
+#        RI(RunPeriod.TOP_DEPLOYMENT, 77485, Injector.OLD_TOP, Source.BARE, 5, True, top_deployment_mon_id, None),
+#        RI(RunPeriod.TOP_DEPLOYMENT, 77486, Injector.OLD_TOP, Source.BARE, 8, True, top_deployment_mon_id, None),
+#        RI(RunPeriod.TOP_DEPLOYMENT, 77488, Injector.OLD_TOP, Source.COLLIMATOR, 5, True, top_deployment_mon_id, None),
+#        RI(RunPeriod.TOP_DEPLOYMENT, 77489, Injector.OLD_TOP, Source.COLLIMATOR, 6, True, top_deployment_mon_id, None),
+#        RI(RunPeriod.TOP_DEPLOYMENT, 77490, Injector.OLD_TOP, Source.COLLIMATOR, 7, True, top_deployment_mon_id, None),
         # Wednesday 24th January 2018
-        RI(RunPeriod.TOP_DEPLOYMENT, 77496, Injector.OLD_TOP, Source.COLLIMATOR, 8, True, top_deployment_mon_id, None),
-        RI(RunPeriod.TOP_DEPLOYMENT, 77497, Injector.OLD_TOP, Source.DIFFUSER, 10, True, top_deployment_mon_id, None),
-        RI(RunPeriod.TOP_DEPLOYMENT, 77498, Injector.OLD_TOP, Source.DIFFUSER, 15, True, top_deployment_mon_id, None),
-        RI(RunPeriod.TOP_DEPLOYMENT, 77499, Injector.OLD_TOP, Source.DIFFUSER, 20, True, top_deployment_mon_id, None),
-        RI(RunPeriod.TOP_DEPLOYMENT, 77500, Injector.OLD_TOP, Source.DIFFUSER, 25, True, top_deployment_mon_id, None),
+#        RI(RunPeriod.TOP_DEPLOYMENT, 77496, Injector.OLD_TOP, Source.COLLIMATOR, 8, True, top_deployment_mon_id, None),
+#        RI(RunPeriod.TOP_DEPLOYMENT, 77497, Injector.OLD_TOP, Source.DIFFUSER, 10, True, top_deployment_mon_id, None),
+#        RI(RunPeriod.TOP_DEPLOYMENT, 77498, Injector.OLD_TOP, Source.DIFFUSER, 15, True, top_deployment_mon_id, None),
+#        RI(RunPeriod.TOP_DEPLOYMENT, 77499, Injector.OLD_TOP, Source.DIFFUSER, 20, True, top_deployment_mon_id, None),
+#        RI(RunPeriod.TOP_DEPLOYMENT, 77500, Injector.OLD_TOP, Source.DIFFUSER, 25, True, top_deployment_mon_id, None),
         # Tuesday 5th February 2019
-        RI(RunPeriod.KOREAN_LASER, 80174, Injector.B1, Source.COLLIMATOR, None, True, None, None),
-        RI(RunPeriod.KOREAN_LASER, 80175, Injector.B2, Source.COLLIMATOR, None, True, None, None),
-        RI(RunPeriod.KOREAN_LASER, 80176, Injector.B3, Source.COLLIMATOR, None, True, None, None),
-        RI(RunPeriod.KOREAN_LASER, 80177, Injector.B4, Source.COLLIMATOR, None, True, None, None),
-        RI(RunPeriod.KOREAN_LASER, 80178, Injector.B5, Source.COLLIMATOR, None, True, None, None),
-        RI(RunPeriod.KOREAN_LASER, 80180, Injector.B1, Source.DIFFUSER, None, True, None, None),
-        RI(RunPeriod.KOREAN_LASER, 80181, Injector.B2, Source.DIFFUSER, None, True, None, None),
-        RI(RunPeriod.KOREAN_LASER, 80182, Injector.B3, Source.DIFFUSER, None, True, None, None),
-        RI(RunPeriod.KOREAN_LASER, 80183, Injector.B4, Source.DIFFUSER, None, True, None, None),
-        RI(RunPeriod.KOREAN_LASER, 80184, Injector.B5, Source.DIFFUSER, None, True, None, None),
-        RI(RunPeriod.KOREAN_LASER, 80186, Injector.B1, Source.BARE, None, True, None, None),
-        RI(RunPeriod.KOREAN_LASER, 80187, Injector.B2, Source.BARE, None, True, None, None),
-        RI(RunPeriod.KOREAN_LASER, 80188, Injector.B3, Source.BARE, None, True, None, None),
-        RI(RunPeriod.KOREAN_LASER, 80189, Injector.B4, Source.BARE, None, True, None, None),
-        RI(RunPeriod.KOREAN_LASER, 80190, Injector.B5, Source.BARE, None, True, None, None),
+#        RI(RunPeriod.KOREAN_LASER, 80174, Injector.B1, Source.COLLIMATOR, None, True, None, None),
+#        RI(RunPeriod.KOREAN_LASER, 80175, Injector.B2, Source.COLLIMATOR, None, True, None, None),
+#        RI(RunPeriod.KOREAN_LASER, 80176, Injector.B3, Source.COLLIMATOR, None, True, None, None),
+#        RI(RunPeriod.KOREAN_LASER, 80177, Injector.B4, Source.COLLIMATOR, None, True, None, None),
+#        RI(RunPeriod.KOREAN_LASER, 80178, Injector.B5, Source.COLLIMATOR, None, True, None, None),
+#        RI(RunPeriod.KOREAN_LASER, 80180, Injector.B1, Source.DIFFUSER, None, True, None, None),
+#        RI(RunPeriod.KOREAN_LASER, 80181, Injector.B2, Source.DIFFUSER, None, True, None, None),
+#        RI(RunPeriod.KOREAN_LASER, 80182, Injector.B3, Source.DIFFUSER, None, True, None, None),
+#        RI(RunPeriod.KOREAN_LASER, 80183, Injector.B4, Source.DIFFUSER, None, True, None, None),
+#        RI(RunPeriod.KOREAN_LASER, 80184, Injector.B5, Source.DIFFUSER, None, True, None, None),
+#        RI(RunPeriod.KOREAN_LASER, 80186, Injector.B1, Source.BARE, None, True, None, None),
+#        RI(RunPeriod.KOREAN_LASER, 80187, Injector.B2, Source.BARE, None, True, None, None),
+#        RI(RunPeriod.KOREAN_LASER, 80188, Injector.B3, Source.BARE, None, True, None, None),
+#        RI(RunPeriod.KOREAN_LASER, 80189, Injector.B4, Source.BARE, None, True, None, None),
+#        RI(RunPeriod.KOREAN_LASER, 80190, Injector.B5, Source.BARE, None, True, None, None),
         # July 2019
-        RI(RunPeriod.LIVERPOOL_LASER, 81390, Injector.B1, Source.COLLIMATOR, None, True, liverpool_mon_id, (350, 700)),
-        RI(RunPeriod.LIVERPOOL_LASER, 81391, Injector.B2, Source.COLLIMATOR, None, True, liverpool_mon_id, (350, 750)),
-        RI(RunPeriod.LIVERPOOL_LASER, 81392, Injector.B3, Source.COLLIMATOR, None, True, liverpool_mon_id, (350, 700)),
-        RI(RunPeriod.LIVERPOOL_LASER, 81393, Injector.B4, Source.COLLIMATOR, None, True, liverpool_mon_id, (350, 750)),
-        RI(RunPeriod.LIVERPOOL_LASER, 81394, Injector.B5, Source.COLLIMATOR, None, True, liverpool_mon_id, (350, 500)),
-        RI(RunPeriod.LIVERPOOL_LASER, 81397, Injector.B1, Source.DIFFUSER, None, True, liverpool_mon_id, (350, 600)),
-        RI(RunPeriod.LIVERPOOL_LASER, 81398, Injector.B2, Source.DIFFUSER, None, True, liverpool_mon_id, (350, 575)),
-        RI(RunPeriod.LIVERPOOL_LASER, 81399, Injector.B3, Source.DIFFUSER, None, True, liverpool_mon_id, (350, 575)),
-        RI(RunPeriod.LIVERPOOL_LASER, 81400, Injector.B4, Source.DIFFUSER, None, True, liverpool_mon_id, (350, 550)),
-        RI(RunPeriod.LIVERPOOL_LASER, 81401, Injector.B5, Source.DIFFUSER, None, True, liverpool_mon_id, (350, 600)),
-        RI(RunPeriod.LIVERPOOL_LASER, 81395, Injector.B5, Source.BARE, None, True, liverpool_mon_id, (250, 500)),
-        RI(RunPeriod.LIVERPOOL_LASER, 81402, Injector.B1, Source.BARE, None, True, liverpool_mon_id, (325, 550)),
-        RI(RunPeriod.LIVERPOOL_LASER, 81403, Injector.B2, Source.BARE, None, True, liverpool_mon_id, (350, 550)),
-        RI(RunPeriod.LIVERPOOL_LASER, 81404, Injector.B3, Source.BARE, None, True, liverpool_mon_id, (330, 530)),
-        RI(RunPeriod.LIVERPOOL_LASER, 81405, Injector.B4, Source.BARE, None, True, liverpool_mon_id, (600, 800)),
-        RI(RunPeriod.LIVERPOOL_LASER, 81409, Injector.B1, Source.MONITOR, None, True, liverpool_mon_id, (360, 400)),
+#        RI(RunPeriod.LIVERPOOL_LASER, 81390, Injector.B1, Source.COLLIMATOR, None, True, liverpool_mon_id, (480, 700)),
+ #       RI(RunPeriod.LIVERPOOL_LASER, 81391, Injector.B2, Source.COLLIMATOR, None, True, liverpool_mon_id, (350, 750)),
+ #       RI(RunPeriod.LIVERPOOL_LASER, 81392, Injector.B3, Source.COLLIMATOR, None, True, liverpool_mon_id, (350, 700)),
+#        RI(RunPeriod.LIVERPOOL_LASER, 81393, Injector.B4, Source.COLLIMATOR, None, True, liverpool_mon_id, (350, 750)),
+#        RI(RunPeriod.LIVERPOOL_LASER, 81394, Injector.B5, Source.COLLIMATOR, None, True, liverpool_mon_id, (350, 500)),
+#        RI(RunPeriod.LIVERPOOL_LASER, 81397, Injector.B1, Source.DIFFUSER, None, True, liverpool_mon_id, (350, 600)),
+#        RI(RunPeriod.LIVERPOOL_LASER, 81398, Injector.B2, Source.DIFFUSER, None, True, liverpool_mon_id, (350, 575)),
+#        RI(RunPeriod.LIVERPOOL_LASER, 81399, Injector.B3, Source.DIFFUSER, None, True, liverpool_mon_id, (350, 575)),
+#        RI(RunPeriod.LIVERPOOL_LASER, 81400, Injector.B4, Source.DIFFUSER, None, True, liverpool_mon_id, (350, 550)),
+#        RI(RunPeriod.LIVERPOOL_LASER, 81401, Injector.B5, Source.DIFFUSER, None, True, liverpool_mon_id, (350, 600)),
+#        RI(RunPeriod.LIVERPOOL_LASER, 81395, Injector.B5, Source.BARE, None, True, liverpool_mon_id, (250, 500)),
+#        RI(RunPeriod.LIVERPOOL_LASER, 81402, Injector.B1, Source.BARE, None, True, liverpool_mon_id, (325, 550)),
+#        RI(RunPeriod.LIVERPOOL_LASER, 81403, Injector.B2, Source.BARE, None, True, liverpool_mon_id, (350, 550)),
+#        RI(RunPeriod.LIVERPOOL_LASER, 81404, Injector.B3, Source.BARE, None, True, liverpool_mon_id, (330, 530)),
+ #       RI(RunPeriod.LIVERPOOL_LASER, 81405, Injector.B4, Source.BARE, None, True, liverpool_mon_id, (600, 800)),
+#        RI(RunPeriod.LIVERPOOL_LASER, 81409, Injector.B1, Source.MONITOR, None, True, liverpool_mon_id, (360, 400)),
         # Varied intensity runs
-        RI(RunPeriod.LIVERPOOL_LASER, 81410, Injector.B1, Source.COLLIMATOR, None, True, liverpool_mon_id, (350, 700)),
-        RI(RunPeriod.LIVERPOOL_LASER, 81411, Injector.B3, Source.DIFFUSER, None, True, liverpool_mon_id, (350, 575)),
-    ]}
+#        RI(RunPeriod.LIVERPOOL_LASER, 81410, Injector.B1, Source.COLLIMATOR, None, True, liverpool_mon_id, (350, 700)),
+#        RI(RunPeriod.LIVERPOOL_LASER, 81411, Injector.B3, Source.DIFFUSER, None, True, liverpool_mon_id, (350, 575)),
+        #September 2019
+#        RI(RunPeriod.LIVERPOOL_LASER, 81987, Injector.B1, Source.COLLIMATOR, None, True, liverpool_mon_id, (350, 700)),
+#        RI(RunPeriod.LIVERPOOL_LASER, 81988, Injector.B2, Source.COLLIMATOR, None, True, liverpool_mon_id, (350, 750)),
+#        RI(RunPeriod.LIVERPOOL_LASER, 81989, Injector.B3, Source.COLLIMATOR, None, True, liverpool_mon_id, (350, 700)),
+#        RI(RunPeriod.LIVERPOOL_LASER, 81990, Injector.B4, Source.COLLIMATOR, None, True, liverpool_mon_id, (350, 750)),
+ #       RI(RunPeriod.LIVERPOOL_LASER, 81991, Injector.B5, Source.COLLIMATOR, None, True, liverpool_mon_id, (350, 500)),
+ #       RI(RunPeriod.LIVERPOOL_LASER, 81992, Injector.B1, Source.DIFFUSER, None, True, liverpool_mon_id, (350, 600)),
+#        RI(RunPeriod.LIVERPOOL_LASER, 81993, Injector.B2, Source.DIFFUSER, None, True, liverpool_mon_id, (350, 575)),
+#        RI(RunPeriod.LIVERPOOL_LASER, 81994, Injector.B3, Source.DIFFUSER, None, True, liverpool_mon_id, (350, 575)),
+#        RI(RunPeriod.LIVERPOOL_LASER, 81995, Injector.B4, Source.DIFFUSER, None, True, liverpool_mon_id, (350, 550)),
+#        RI(RunPeriod.LIVERPOOL_LASER, 81996, Injector.B5, Source.DIFFUSER, None, True, liverpool_mon_id, (350, 600)),
+ ##       RI(RunPeriod.LIVERPOOL_LASER, 81986, Injector.B1, Source.MONITOR, None, True, liverpool_mon_id, (360, 400)),
+#        RI(RunPeriod.LIVERPOOL_LASER, 81997, Injector.B2, Source.BARE, None, True, liverpool_mon_id, (360, 400)),
+#        RI(RunPeriod.LIVERPOOL_LASER, 81998, Injector.B5, Source.COLLIMATOR, None, True, liverpool_mon_id, (360, 400)),
+#        RI(RunPeriod.LIVERPOOL_LASER, 81999, Injector.B5, Source.COLLIMATOR, None, True, liverpool_mon_id, (360, 400)),
+        #November 2019
+#        RI(RunPeriod.LIVERPOOL_LASER, 82181, Injector.B1, Source.COLLIMATOR, None, True, liverpool_mon_id, (350, 700)),
+#        RI(RunPeriod.LIVERPOOL_LASER, 82182, Injector.B2, Source.COLLIMATOR, None, True, liverpool_mon_id, (350, 750)),
+ #       RI(RunPeriod.LIVERPOOL_LASER, 82183, Injector.B3, Source.COLLIMATOR, None, True, liverpool_mon_id, (350, 700)),
+ #       RI(RunPeriod.LIVERPOOL_LASER, 82184, Injector.B4, Source.COLLIMATOR, None, True, liverpool_mon_id, (350, 750)),
+#        RI(RunPeriod.LIVERPOOL_LASER, 82185, Injector.B5, Source.COLLIMATOR, None, True, liverpool_mon_id, (350, 500)),
+#        RI(RunPeriod.LIVERPOOL_LASER, 82186, Injector.B1, Source.DIFFUSER, None, True, liverpool_mon_id, (350, 600)),
+#        RI(RunPeriod.LIVERPOOL_LASER, 82187, Injector.B2, Source.DIFFUSER, None, True, liverpool_mon_id, (350, 575)),
+#        RI(RunPeriod.LIVERPOOL_LASER, 82188, Injector.B3, Source.DIFFUSER, None, True, liverpool_mon_id, (350, 575)),
+#        RI(RunPeriod.LIVERPOOL_LASER, 82189, Injector.B4, Source.DIFFUSER, None, True, liverpool_mon_id, (350, 550)),
+#        RI(RunPeriod.LIVERPOOL_LASER, 82190, Injector.B5, Source.DIFFUSER, None, True, liverpool_mon_id, (350, 600)),
+#        RI(RunPeriod.LIVERPOOL_LASER, 82191, Injector.B1, Source.MONITOR, None, True, liverpool_mon_id, (360, 400)),
+#        RI(RunPeriod.LIVERPOOL_LASER, 82192, Injector.B1, Source.MONITOR, None, True, liverpool_mon_id, (360, 400)),
+#        #January 2019 (AUTOCALIB)
+#        RI(RunPeriod.LIVERPOOL_LASER, 82462, Injector.B1, Source.MONITOR, None, True, liverpool_mon_id, (360, 400)),
+        #July 2020 - UKLI MC perfect collimator test 
+#        RI(RunPeriod.LIVERPOOL_LASER, 00000, Injector.B5, Source.COLLIMATOR, None, True, liverpool_mon_id, (360, 400)),
+#        RI(RunPeriod.LIVERPOOL_LASER, 00001, Injector.B1, Source.COLLIMATOR, None, True, liverpool_mon_id, (600, 800)),
+#        RI(RunPeriod.LIVERPOOL_LASER, 00002, Injector.B2, Source.COLLIMATOR, None, True, liverpool_mon_id, (600, 800)),
+#        RI(RunPeriod.LIVERPOOL_LASER, 00003, Injector.B3, Source.COLLIMATOR, None, True, liverpool_mon_id, (600, 800)),
+#        RI(RunPeriod.LIVERPOOL_LASER, 00004, Injector.B4, Source.COLLIMATOR, None, True, liverpool_mon_id, (600, 800)),
+#        RI(RunPeriod.LIVERPOOL_LASER, 00005, Injector.B5, Source.COLLIMATOR, None, True, liverpool_mon_id, (600, 800)),
+#        RI(RunPeriod.LIVERPOOL_LASER, 00011, Injector.B1, Source.COLLIMATOR, None, True, liverpool_mon_id, (600, 800)),
+#        RI(RunPeriod.LIVERPOOL_LASER, 00012, Injector.B2, Source.COLLIMATOR, None, True, liverpool_mon_id, (600, 800)),
+#        RI(RunPeriod.LIVERPOOL_LASER, 00013, Injector.B3, Source.COLLIMATOR, None, True, liverpool_mon_id, (600, 800)),
+#        RI(RunPeriod.LIVERPOOL_LASER, 00014, Injector.B4, Source.COLLIMATOR, None, True, liverpool_mon_id, (600, 800)),
+#        RI(RunPeriod.LIVERPOOL_LASER, 00015, Injector.B5, Source.COLLIMATOR, None, True, liverpool_mon_id, (600, 800)),
+        #August 2020 - UKLI MC warwick collimator test
+#        RI(RunPeriod.LIVERPOOL_LASER, 00111, Injector.B1, Source.COLLIMATOR, None, True, liverpool_mon_id, (600, 800)),
+#        RI(RunPeriod.LIVERPOOL_LASER, 22222, Injector.B2, Source.COLLIMATOR, None, True, liverpool_mon_id, (600, 800)),
+#        RI(RunPeriod.LIVERPOOL_LASER, 33333, Injector.B3, Source.COLLIMATOR, None, True, liverpool_mon_id, (600, 800)),
+#        RI(RunPeriod.LIVERPOOL_LASER, 44444, Injector.B4, Source.COLLIMATOR, None, True, liverpool_mon_id, (600, 800)),
+#        RI(RunPeriod.LIVERPOOL_LASER, 55555, Injector.B5, Source.COLLIMATOR, None, True, liverpool_mon_id, (600, 800)),
+        #Dec 2020 - UKLI MC warwick coll test new detsim check
+#        RI(RunPeriod.LIVERPOOL_LASER, 22220, Injector.B1, Source.COLLIMATOR, None, True, liverpool_mon_id, (600, 800)),
+#        RI(RunPeriod.LIVERPOOL_LASER, 20202, Injector.B1, Source.COLLIMATOR, None, True, liverpool_mon_id, (0, 1000)),
+        #Jan 2020 - UKLI data from July check
+#        RI(RunPeriod.LIVERPOOL_LASER, 829091, Injector.B1, Source.COLLIMATOR, None, True, liverpool_mon_id, (350, 650)),
+#        RI(RunPeriod.LIVERPOOL_LASER, 829092, Injector.B2, Source.COLLIMATOR, None, True, liverpool_mon_id, (350, 650)),
+#        RI(RunPeriod.LIVERPOOL_LASER, 829093, Injector.B3, Source.COLLIMATOR, None, True, liverpool_mon_id, (350, 650)),
+#        RI(RunPeriod.LIVERPOOL_LASER, 829094, Injector.B4, Source.COLLIMATOR, None, True, liverpool_mon_id, (350, 650)),
+#        RI(RunPeriod.LIVERPOOL_LASER, 829095, Injector.B5, Source.COLLIMATOR, None, True, liverpool_mon_id, (350, 650)),
+
+#        RI(RunPeriod.LIVERPOOL_LASER, 8290911, Injector.B1, Source.DIFFUSER, None, True, liverpool_mon_id, (350, 650)),
+#        RI(RunPeriod.LIVERPOOL_LASER, 8290922, Injector.B2, Source.DIFFUSER, None, True, liverpool_mon_id, (350, 650)),
+#        RI(RunPeriod.LIVERPOOL_LASER, 8290933, Injector.B3, Source.DIFFUSER, None, True, liverpool_mon_id, (350, 650)),
+#        RI(RunPeriod.LIVERPOOL_LASER, 8290944, Injector.B4, Source.DIFFUSER, None, True, liverpool_mon_id, (350, 650)),
+#        RI(RunPeriod.LIVERPOOL_LASER, 8290955, Injector.B5, Source.DIFFUSER, None, True, liverpool_mon_id, (350, 650)),
+
+        #Time dispersion MC insert
+#        RI(RunPeriod.LIVERPOOL_LASER, 123456, Injector.B1, Source.DIFFUSER, None, True, liverpool_mon_id, (0, 1000)),
+
+        #Diffuser MC test
+#         RI(RunPeriod.LIVERPOOL_LASER, 1010101, Injector.B1, Source.DIFFUSER, None, True, liverpool_mon_id, (0, 1000)),
+#         RI(RunPeriod.LIVERPOOL_LASER, 110101, Injector.B1, Source.DIFFUSER, None, True, liverpool_mon_id, (0, 1000)),
+#           RI(RunPeriod.LIVERPOOL_LASER, 121212, Injector.B1, Source.DIFFUSER, None, True, liverpool_mon_id, (0, 1000)),
+#         RI(RunPeriod.LIVERPOOL_LASER, 69420, Injector.B1, Source.DIFFUSER, None, True, liverpool_mon_id, (0, 1000)),
+#         RI(RunPeriod.LIVERPOOL_LASER, 750123, Injector.B1, Source.DIFFUSER, None, True, liverpool_mon_id, (0, 1000)),
+#        RI(RunPeriod.LIVERPOOL_LASER, 1000123, Injector.B1, Source.DIFFUSER, None, True, liverpool_mon_id, (0, 1000))
+#        RI(RunPeriod.LIVERPOOL_LASER, 1500123, Injector.B1, Source.DIFFUSER, None, True, liverpool_mon_id, (0, 1000))
+#         RI(RunPeriod.LIVERPOOL_LASER, 1750123, Injector.B1, Source.DIFFUSER, None, True, liverpool_mon_id, (0, 1000))
+#        RI(RunPeriod.LIVERPOOL_LASER, 17501000, Injector.B1, Source.DIFFUSER, None, True, liverpool_mon_id, (0, 1000))
+#        RI(RunPeriod.LIVERPOOL_LASER, 1750000, Injector.B1, Source.DIFFUSER, None, True, liverpool_mon_id, (0, 1000))
+#         RI(RunPeriod.LIVERPOOL_LASER, 2000000, Injector.B1, Source.DIFFUSER, None, True, liverpool_mon_id, (0, 1000))
+#         RI(RunPeriod.LIVERPOOL_LASER, 696969, Injector.B1, Source.DIFFUSER, None, True, liverpool_mon_id, (0, 1000))
+#        RI(RunPeriod.LIVERPOOL_LASER, 420420, Injector.B1, Source.DIFFUSER, None, True, liverpool_mon_id, (0, 1000))
+#         RI(RunPeriod.LIVERPOOL_LASER, 98765, Injector.B1, Source.DIFFUSER, None, True, liverpool_mon_id, (0, 1000))
+#         RI(RunPeriod.LIVERPOOL_LASER, 4545454, Injector.B1, Source.DIFFUSER, None, True, liverpool_mon_id, (0, 1000))
+#         RI(RunPeriod.LIVERPOOL_LASER, 546378, Injector.B1, Source.DIFFUSER, None, True, liverpool_mon_id, (0, 1000)) 
+#         RI(RunPeriod.LIVERPOOL_LASER, 90210, Injector.B2, Source.DIFFUSER, None, True, liverpool_mon_id, (0, 1000))
+#         RI(RunPeriod.LIVERPOOL_LASER, 45612, Injector.B1, Source.DIFFUSER, None, True, liverpool_mon_id, (0, 1000))
+#          RI(RunPeriod.LIVERPOOL_LASER, 4561234, Injector.B1, Source.COLLIMATOR, None, True, liverpool_mon_id, (0, 1000))
+#          RI(RunPeriod.LIVERPOOL_LASER, 102938, Injector.B2, Source.DIFFUSER, None, True, liverpool_mon_id, (0, 1000))
+#          RI(RunPeriod.LIVERPOOL_LASER, 565656, Injector.B1, Source.DIFFUSER, None, True, liverpool_mon_id, (0, 1000))
+#          RI(RunPeriod.LIVERPOOL_LASER, 676767, Injector.B1, Source.COLLIMATOR, None, True, liverpool_mon_id, (0, 1000))
+#        RI(RunPeriod.LIVERPOOL_LASER, 87965, Injector.B1, Source.COLLIMATOR, None, True, liverpool_mon_id, (0, 1000))
+
+
+#030822-collimator test 
+#        RI(RunPeriod.LIVERPOOL_LASER, 2020202, Injector.B1, Source.COLLIMATOR, None, True, liverpool_mon_id, (650, 1000))
+#        RI(RunPeriod.LIVERPOOL_LASER, 3030303, Injector.B2, Source.COLLIMATOR, None, True, liverpool_mon_id, (650, 1000))
+#        RI(RunPeriod.LIVERPOOL_LASER, 4040404, Injector.B3, Source.COLLIMATOR, None, True, liverpool_mon_id, (650, 1000))
+#        RI(RunPeriod.LIVERPOOL_LASER, 5050505, Injector.B4, Source.COLLIMATOR, None, True, liverpool_mon_id, (650, 1000))
+#         RI(RunPeriod.LIVERPOOL_LASER, 6060606, Injector.B5, Source.COLLIMATOR, None, True, liverpool_mon_id, (650, 1000))
+
+#070822-diffuser test
+#        RI(RunPeriod.LIVERPOOL_LASER, 111111, Injector.B1, Source.DIFFUSER, None, True, liverpool_mon_id, (650, 1000))
+#        RI(RunPeriod.LIVERPOOL_LASER, 222222, Injector.B2, Source.DIFFUSER, None, True, liverpool_mon_id, (650, 1000))
+#        RI(RunPeriod.LIVERPOOL_LASER, 333333, Injector.B3, Source.DIFFUSER, None, True, liverpool_mon_id, (650, 1000))
+#        RI(RunPeriod.LIVERPOOL_LASER, 444444, Injector.B4, Source.DIFFUSER, None, True, liverpool_mon_id, (650, 1000))
+        RI(RunPeriod.LIVERPOOL_LASER, 555555, Injector.B5, Source.DIFFUSER, None, True, liverpool_mon_id, (650, 1000))
+
+]}
 
 class sk_constants:
     """Storage class containing the Super-Kamiokande geometry, ripped from WCSim.
